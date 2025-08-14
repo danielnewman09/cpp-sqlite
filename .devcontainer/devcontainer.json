@@ -9,6 +9,9 @@
 	// Map the entire project folder to /workspaces/your-project-name in the container
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
+	"mounts": [
+		"source=${localWorkspaceFolder}/.devcontainer/conan-profile,target=/home/vscode/.conan2/profiles/default,type=bind,consistency=cached"
+	],
 	// Capabilities needed for debugging with gdb/lldb
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
@@ -36,9 +39,8 @@
 					"conan.conan",                     // Conan extension for VSCode
 					"twxs.cmake",                      // CMake language support
 					"cheshirekow.cmake-format",        // For formatting CMake files
-					"ms-azuretools.vscode-docker"      // To manage Docker from within the container]
+					"ms-azuretools.vscode-docker",      // To manage Docker from within the container]
+					"anthropic.claude-code"
 		]}
-	},
-	// A command to run after the container is created
-	"postCreateCommand": "conan profile detect --force && conan profile update settings.compiler.cppstd=20 default"
+	}
 }
