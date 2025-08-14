@@ -13,6 +13,15 @@ class CppSQLite(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_CXX_STANDARD"] = "20"
         tc.variables["CMAKE_CXX_STANDARD_REQUIRED"] = "ON"
+        
+        build_type = str(self.settings.build_type).lower()
+        tc.variables["CMAKE_RUNTIME_OUTPUT_DIRECTORY"] = \
+            f"${{CMAKE_BINARY_DIR}}/{build_type}"
+        tc.variables["CMAKE_LIBRARY_OUTPUT_DIRECTORY"] = \
+            f"${{CMAKE_BINARY_DIR}}/{build_type}"
+        tc.variables["CMAKE_ARCHIVE_OUTPUT_DIRECTORY"] = \
+            f"${{CMAKE_BINARY_DIR}}/{build_type}"
+
         tc.generate()
 
     def build(self):

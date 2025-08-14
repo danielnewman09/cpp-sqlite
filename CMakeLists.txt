@@ -11,7 +11,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-Wall -Wextra -Wpedantic)
 
-
 add_library(${PROJECT_NAME})
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -33,12 +32,12 @@ find_package(SQLite3 REQUIRED)
 enable_testing()
 
 # IMPORTANT: Test framework now available before adding source directories
-add_subdirectory(src)
-add_subdirectory(include)
+add_subdirectory(cpp_sqlite)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
+
 
 # Installation rules
 install(TARGETS ${PROJECT_NAME} DESTINATION "./installs"
