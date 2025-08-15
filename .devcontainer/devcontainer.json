@@ -11,7 +11,7 @@
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
 	"mounts": [
 		"source=${localWorkspaceFolder}/.devcontainer/conan-profile,target=/home/vscode/.conan2/profiles/default,type=bind,consistency=cached",
-		"source=${localWorkspaceFolder}/.conan2,target=/home/vscode/.conan2,type=bind"
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.conan2,target=/home/vscode/.conan2,type=bind,consistency=cached"
 	],
 	// Capabilities needed for debugging with gdb/lldb
 	"runArgs": [
