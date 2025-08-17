@@ -52,6 +52,7 @@ RUN groupadd --gid 1000 vscode && \
 USER vscode
 RUN conan profile detect --force
 COPY conan-profile /home/vscode/.conan2/profiles/default
+RUN conan remote update conancenter --url="https://center2.conan.io"
 
 # Set back to root to allow VSCode to perform setup, it will switch to 'vscode' user later.
 USER root

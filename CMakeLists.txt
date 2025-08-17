@@ -16,7 +16,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_libraries(${PROJECT_NAME} 
         PRIVATE
-                SQLite::SQLite3)
+                SQLite::SQLite3
+                boost::boost)
 
 # Add all relevant include directories
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -27,6 +28,7 @@ $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 
 # Find the packages (dependencies) provided by Conan
 find_package(SQLite3 REQUIRED)
+find_package(Boost REQUIRED)
 
 # Enable testing at the top level
 enable_testing()

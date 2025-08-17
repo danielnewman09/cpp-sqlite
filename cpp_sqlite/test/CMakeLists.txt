@@ -3,7 +3,9 @@ enable_testing()
 
 find_package(GTest REQUIRED)
 add_executable(cpp_sqlite_test 
-    testExample.cpp)
+    testExample.cpp
+    testDatabase.cpp
+    testDatabase.hpp)
     
 set_target_properties(cpp_sqlite_test PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -11,7 +13,9 @@ target_link_libraries(cpp_sqlite_test
     PRIVATE
         cpp_sqlite
         GTest::GTest
-        GTest::Main)
+        GTest::Main
+        SQLite::SQLite3
+        boost::boost)
 
 target_compile_features(cpp_sqlite_test PRIVATE cxx_std_20)
 
