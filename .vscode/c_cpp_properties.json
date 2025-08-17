@@ -3,7 +3,8 @@
     {
       "name": "Linux",
       "includePath": [
-        "${workspaceFolder}/cpp_sqlite",
+        "${workspaceFolder}/cpp_sqlite/src",
+        "${workspaceFolder}/cpp_sqlite/test",
         "/home/vscode/.conan2/p/*/p/include"
       ],
       "defines": [],

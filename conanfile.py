@@ -57,6 +57,7 @@ class CppSQLite(ConanFile):
         # Regular dependency for the library/app
         self.requires('sqlite3/3.47.0')
         self.requires("boost/1.86.0")
+        self.requires('spdlog/1.14.1')
         # Test-only dependency
         self.test_requires("gtest/1.14.0")
 

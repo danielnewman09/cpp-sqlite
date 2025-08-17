@@ -1,18 +1,21 @@
-#include "cpp_sqlite/src/DBDatabase.hpp"
+#include "sqlite_db/DBDatabase.hpp"
 #include <stdexcept>
 
 namespace cpp_sqlite
 {
 
-Database::Database(std::string_view url, bool allowWrite) : db_(nullptr, sqlite3_close)
+Database::Database(std::string url, bool allowWrite)
+  : db_(nullptr, sqlite3_close)
 {
+  LOG_DEBUG("Creating Database with url: {}", url);
   sqlite3* raw_db = nullptr;
 
   // Determine flags based on allowWrite parameter
-  int flags = allowWrite ? (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE) : SQLITE_OPEN_READONLY;
+  int flags = allowWrite ? (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
+                         : SQLITE_OPEN_READONLY;
 
   // Open the database
-  int result = sqlite3_open_v2(url.data(), &raw_db, flags, nullptr);
+  int result = sqlite3_open_v2(url.c_str(), &raw_db, flags, nullptr);
 
   if (result != SQLITE_OK)
   {

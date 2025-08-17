@@ -4,7 +4,7 @@
 #include <concepts>
 #include <type_traits>
 
-#include "DBBaseTransferObject.hpp"
+#include "sqlite_db/DBBaseTransferObject.hpp"
 
 namespace cpp_sqlite
 {

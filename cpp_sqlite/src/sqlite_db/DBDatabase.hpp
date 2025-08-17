@@ -3,13 +3,14 @@
 #define DB_DATABASE_HPP
 
 #include <memory>
-#include <string_view>
+#include <string>
 #include <vector>
 
 #include "sqlite3.h"
 
-#include "cpp_sqlite/src/DBBaseTransferObject.hpp"
-#include "cpp_sqlite/src/DBTraits.hpp"
+#include "Logger.hpp"
+#include "sqlite_db/DBBaseTransferObject.hpp"
+#include "sqlite_db/DBTraits.hpp"
 
 namespace cpp_sqlite
 {
@@ -18,7 +19,8 @@ namespace cpp_sqlite
  * that allows us to use modern C++ memory management
  * with this library.
  */
-using PreparedSQLStmt = std::unique_ptr<sqlite3_stmt, decltype(&sqlite3_finalize)>;
+using PreparedSQLStmt =
+  std::unique_ptr<sqlite3_stmt, decltype(&sqlite3_finalize)>;
 
 class Database
 {
@@ -32,7 +34,7 @@ public:
    * \param allowWrite The boolean indicating
    *        whether this is a read-only database.
    */
-  Database(std::string_view url, bool allowWrite);
+  Database(std::string url, bool allowWrite);
 
   /*!
    * \brief Perform a generic insert operation

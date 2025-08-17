@@ -1,7 +1,7 @@
 #include <stdexcept>
 
-#include "cpp_sqlite/src/DBDatabase.hpp"
 #include "cpp_sqlite/test/testDatabase.hpp"
+#include "sqlite_db/DBDatabase.hpp"
 
 TEST_F(DatabaseTest, CreateInMemoryDatabase)
 {
