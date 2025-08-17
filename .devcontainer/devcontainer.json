@@ -5,13 +5,13 @@
 		"dockerfile": "Dockerfile"
 	},
 	// Set the user that VSCode will use inside the container
-	"remoteUser": "vscode",
+	"remoteUser": "ubuntu",
 	// Map the entire project folder to /workspaces/your-project-name in the container
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
 	"mounts": [
-		"source=${localWorkspaceFolder}/.devcontainer/conan-profile,target=/home/vscode/.conan2/profiles/default,type=bind,consistency=cached",
-		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.conan2,target=/home/vscode/.conan2,type=bind,consistency=cached"
+		"source=${localWorkspaceFolder}/.devcontainer/conan-profile,target=/home/ubuntu/.conan2/profiles/default,type=bind,consistency=cached",
+		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.conan2,target=/home/ubuntu/.conan2,type=bind,consistency=cached"
 	],
 	// Capabilities needed for debugging with gdb/lldb
 	"runArgs": [
@@ -21,8 +21,8 @@
 	],
 	// Environment variables for the container
 	"containerEnv": {
-      "CONAN_HOME": "/home/vscode/.conan2"
-    },
+		"CONAN_HOME": "/home/ubuntu/.conan2"
+	},
 	// VSCode settings to apply inside the container
 	"customizations": {
 		"vscode": {
@@ -38,16 +38,18 @@
 				"cmake.configureOnOpen": true,
 				"C_Cpp.default.compilerPath": "/usr/bin/g++",
 				// Tell the Conan extension where to find the conan executable
-				"conan.conanPath": "/usr/local/bin/conan"},
-				"extensions": [
-					"ms-vscode.cpptools-extension-pack", // Essential C/C++ tools from Microsoft
-					"ms-vscode.cmake-tools",           // CMake integration
-					"conan.conan",                     // Conan extension for VSCode
-					"twxs.cmake",                      // CMake language support
-					"cheshirekow.cmake-format",        // For formatting CMake files
-					"matepek.vscode-catch2-test-adapter",
-					"ms-azuretools.vscode-docker",      // To manage Docker from within the container]
-					"anthropic.claude-code"
-		]}
+				"conan.conanPath": "/usr/local/bin/conan"
+			},
+			"extensions": [
+				"ms-vscode.cpptools-extension-pack", // Essential C/C++ tools from Microsoft
+				"ms-vscode.cmake-tools", // CMake integration
+				"conan.conan", // Conan extension for VSCode
+				"twxs.cmake", // CMake language support
+				"cheshirekow.cmake-format", // For formatting CMake files
+				"matepek.vscode-catch2-test-adapter",
+				"ms-azuretools.vscode-docker", // To manage Docker from within the container]
+				"anthropic.claude-code"
+			]
+		}
 	}
 }

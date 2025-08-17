@@ -28,24 +28,23 @@ RUN npm install -g @anthropic-ai/claude-code
 
 # ============================ THE FIX: PART 2 ============================
 # Create a non-root user with the UID/GID passed in as build arguments.
-RUN groupadd --gid ${USER_GID} vscode && \
-    useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash vscode
+# RUN groupadd --gid ${USER_GID} vscode && \
 # =======================================================================
 
 # Add the conan profile, ensuring correct ownership from the start.
 # Note the use of build arguments in the --chown flag.
-ADD --chown=${USER_UID}:${USER_GID} conan-profile /home/vscode/default-conan-profile
+ADD --chown=${USER_UID}:${USER_GID} conan-profile /home/ubuntu/default-conan-profile
 
 # Switch to the non-root user
-USER vscode
+USER ubuntu
 
 # Set environment for the user
-ENV PATH="/home/vscode/.local/bin:${PATH}"
+ENV PATH="/home/ubuntu/.local/bin:${PATH}"
 
 # Install and configure Conan as the non-root user
 RUN pipx install "conan>=2.0" && \
     conan profile detect --force && \
-    mv /home/vscode/default-conan-profile /home/vscode/.conan2/profiles/default && \
+    mv /home/ubuntu/default-conan-profile /home/ubuntu/.conan2/profiles/default && \
     conan remote update conancenter --url="https://center2.conan.io"
 
 # Switch back to root user.
