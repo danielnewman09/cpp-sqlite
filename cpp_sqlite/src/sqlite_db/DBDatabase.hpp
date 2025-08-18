@@ -34,7 +34,9 @@ public:
    * \param allowWrite The boolean indicating
    *        whether this is a read-only database.
    */
-  Database(std::string url, bool allowWrite);
+  Database(std::string url,
+           bool allowWrite,
+           std::shared_ptr<spdlog::logger> pLogger = nullptr);
 
   /*!
    * \brief Perform a generic insert operation
@@ -50,6 +52,9 @@ private:
   //!< The unique pointer storing the SQLite database
   //!< object
   std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_;
+
+  //! The pointer to the spdlog for this object.
+  std::shared_ptr<spdlog::logger> pLogger_;
 };
 
 }  // namespace cpp_sqlite

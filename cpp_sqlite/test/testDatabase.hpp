@@ -3,19 +3,20 @@
 
 #include <gtest/gtest.h>
 #include <filesystem>
+#include "Logger.hpp"
 
 
 class DatabaseTest : public ::testing::Test
 {
+public:
+  ~DatabaseTest() = default;
+
 protected:
-  void TearDown() override
-  {
-    // Clean up any test.db file that might exist
-    if (std::filesystem::exists("test.db"))
-    {
-      std::filesystem::remove("test.db");
-    }
-  }
+  void SetUp() override;
+  void TearDown() override;
+
+private:
+  const static inline std::string testLogFile = "test_database.log";
 };
 
 #endif  // DATABASE_TEST_HPP

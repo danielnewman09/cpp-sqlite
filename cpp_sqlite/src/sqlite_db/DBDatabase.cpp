@@ -4,10 +4,16 @@
 namespace cpp_sqlite
 {
 
-Database::Database(std::string url, bool allowWrite)
-  : db_(nullptr, sqlite3_close)
+Database::Database(std::string url,
+                   bool allowWrite,
+                   std::shared_ptr<spdlog::logger> pLogger)
+  : db_(nullptr, sqlite3_close), pLogger_{pLogger}
 {
-  LOG_DEBUG("Creating Database with url: {}", url);
+  if (pLogger_)
+  {
+    pLogger->debug("Creating database with url: {}", url);
+  }
+
   sqlite3* raw_db = nullptr;
 
   // Determine flags based on allowWrite parameter

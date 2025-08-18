@@ -1,1 +1,2 @@
 add_subdirectory(sqlite_db)
+add_subdirectory(utils)

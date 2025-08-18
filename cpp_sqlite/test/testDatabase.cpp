@@ -3,12 +3,31 @@
 #include "cpp_sqlite/test/testDatabase.hpp"
 #include "sqlite_db/DBDatabase.hpp"
 
+void DatabaseTest::SetUp()
+{
+  // Configure logger for testing with debug level
+  cpp_sqlite::Logger::getInstance().configure(
+    "test_cpp_sqlite", testLogFile, spdlog::level::debug);
+}
+
+void DatabaseTest::TearDown()
+{
+  // Clean up any test.db file that might exist
+  if (std::filesystem::exists("test.db"))
+  {
+    std::filesystem::remove("test.db");
+  }
+}
+
 TEST_F(DatabaseTest, CreateInMemoryDatabase)
 {
   std::string dbUrl{":memory:"};
 
+  auto& logger = cpp_sqlite::Logger::getInstance();
+
   // Test creating an in-memory database
-  auto createDB = [&dbUrl](bool readOnly) { return cpp_sqlite::Database{dbUrl, readOnly}; };
+  auto createDB = [&dbUrl, &logger](bool readOnly)
+  { return cpp_sqlite::Database{dbUrl, readOnly, logger.getLogger()}; };
   ASSERT_NO_THROW(createDB(true););
 
   // Test both read-write and read-only in-memory databases
@@ -28,7 +47,8 @@ TEST_F(DatabaseTest, ReadOnlyNonExistentFileThrowsError)
   }
 
   // Attempting to open a non-existent file in read-only mode should throw
-  ASSERT_THROW({ cpp_sqlite::Database db(nonExistentFile, false); }, std::runtime_error);
+  ASSERT_THROW(
+    { cpp_sqlite::Database db(nonExistentFile, false); }, std::runtime_error);
 }
 
 TEST_F(DatabaseTest, CreateFileDatabase)
