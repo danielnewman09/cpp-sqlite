@@ -42,4 +42,5 @@ Database::Database(std::string url,
   db_.reset(raw_db);
 }
 
+
 }  // namespace cpp_sqlite

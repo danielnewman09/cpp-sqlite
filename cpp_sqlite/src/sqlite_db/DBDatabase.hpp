@@ -48,6 +48,12 @@ public:
     return false;
   }
 
+  /*!
+   * \brief Get raw SQLite database pointer for direct access
+   * \return Raw sqlite3* pointer
+   */
+  sqlite3& getRawDB();
+
 private:
   //!< The unique pointer storing the SQLite database
   //!< object

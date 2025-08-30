@@ -36,7 +36,7 @@ public:
   void configure(const std::string& loggerName = "cpp_sqlite",
                  const std::string& logFile = "cpp_sqlite.log",
                  spdlog::level::level_enum level = spdlog::level::info);
-                 
+
   // Set log level
   void setLevel(spdlog::level::level_enum level);
 
