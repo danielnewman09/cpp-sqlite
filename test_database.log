@@ -1,0 +1,2 @@
+[2025-08-31 03:41:37.130] [test_cpp_sqlite] [debug] [thread 53130] Creating database with url: test_boost_describe.db
+[2025-08-31 03:42:10.314] [test_cpp_sqlite] [info] [thread 53130] Successfully demonstrated boost::describe table creation for TestProduct

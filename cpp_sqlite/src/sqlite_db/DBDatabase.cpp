@@ -42,5 +42,9 @@ Database::Database(std::string url,
   db_.reset(raw_db);
 }
 
+sqlite3* Database::getRawDB()
+{
+  return db_.get();
+}
 
 }  // namespace cpp_sqlite

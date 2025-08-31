@@ -1,4 +1,43 @@
 {
     "editor.formatOnSave": true,
-    "editor.tabSize": 2
+    "editor.tabSize": 2,
+    "testMate.cpp.test.advancedExecutables": [
+        {
+            "pattern": "{build,Build,BUILD,out,Out,OUT}/**/*{test,Test,TEST}*",
+            "cwd": "${absDirpath}",
+            "env": {
+                "ExampleENV1": "You can use variables here too, like ${relPath}",
+                "PATH": "${os_env:PATH}${osPathEnvSep}/adding/new/item/to/PATH/env"
+            },
+            "runTask": {
+                "before": [
+                    "Conan Build"
+                ]
+            }
+        }
+    ],
+    "testMate.cpp.debug.configTemplate": {
+        "type": "cppdbg",
+        "MIMode": "gdb",
+        "program": "${exec}",
+        "args": "${argsArray}",
+        "env": "${envObj}",
+        "environment": "${envObjArray}",
+        "sourceFileMap": "${sourceFileMapObj}",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Load STL pretty printers",
+                "text": "python import sys; sys.path.insert(0, '/usr/share/gcc/python'); from libstdcxx.v6.printers import register_libstdcxx_printers; register_libstdcxx_printers(None)",
+                "ignoreFailures": true
+            }
+        ],
+        "externalConsole": false,
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}"
+    }
 }

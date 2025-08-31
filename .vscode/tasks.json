@@ -1,11 +1,23 @@
 {
     "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "buildType",
+            "description": "Build Type",
+            "type": "pickString",
+            "options": [
+                "Debug",
+                "Release"
+            ],
+            "default": "Release"
+        }
+    ],
     "tasks": [
         {
             "label": "Conan Build",
             "type": "shell",
             "command": "conan",
-            "args": ["build", ".", "--build=missing"],
+            "args": ["build", ".", "--build=missing", "-s", "build_type=${input:buildType}"],
             "group": {
                 "kind": "build",
                 "isDefault": true

@@ -28,9 +28,12 @@ public:
   DataAccessObject(Database& database)
     : tableName_{boost::typeindex::type_id<T>().pretty_name()},
       insertStmt_{nullptr, sqlite3_finalize},
+      createStmt_{nullptr, sqlite3_finalize},
       db_{database},
-      dataBuffer_{}
+      dataBuffer_{},
+      isInitialized_{true}
   {
+    isInitialized_ = executeCreateStmt();
   }
 
   /*!
@@ -41,27 +44,26 @@ public:
     db_.insert(insertStmt_, dataBuffer_);
   }
 
+  /*!
+   * \brief Get the initialization status of this DAO
+   * \return The initialization status of the object.
+   */
+  bool isInitialized() const
+  {
+    return isInitialized_;
+  }
+
 private:
   // Helper function to map C++ types to SQL types
-  template <typename FieldType>
+  template <isSupportedDBType FieldType>
   constexpr const char* getSQLType()
   {
-    if constexpr (std::is_same_v<FieldType, int> ||
-                  std::is_same_v<FieldType, int32_t>)
+    if constexpr (isIntegral<FieldType>)
       return "INTEGER";
-    else if constexpr (std::is_same_v<FieldType, uint32_t> ||
-                       std::is_same_v<FieldType, unsigned int>)
-      return "INTEGER";
-    else if constexpr (std::is_same_v<FieldType, int64_t> ||
-                       std::is_same_v<FieldType, long long>)
-      return "INTEGER";
-    else if constexpr (std::is_same_v<FieldType, float> ||
-                       std::is_same_v<FieldType, double>)
+    else if constexpr (floatingPoint<FieldType>)
       return "REAL";
     else if constexpr (std::is_same_v<FieldType, std::string>)
       return "TEXT";
-    else if constexpr (std::is_same_v<FieldType, bool>)
-      return "INTEGER";
     else
       return "BLOB";  // Default for unknown types
   }
@@ -75,33 +77,9 @@ private:
     bool first = true;
 
     // Process public members
-    boost::mp11::mp_for_each<
-      boost::describe::describe_members<T, boost::describe::mod_public>>(
-      [&](auto D)
-      {
-        if (!first)
-          sql << ", ";
-
-        // Get member name
-        sql << D.name;
-
-        // Get member type and map to SQL type
-        using member_type = std::remove_cv_t<
-          std::remove_reference_t<decltype(std::declval<T>().*D.pointer)>>;
-        sql << " " << getSQLType<member_type>();
-
-        // Add PRIMARY KEY for id field
-        if (std::string(D.name) == "id")
-        {
-          sql << " PRIMARY KEY";
-        }
-
-        first = false;
-      });
-
-    // Process inherited members (from base classes)
-    boost::mp11::mp_for_each<
-      boost::describe::describe_members<T, boost::describe::mod_inherited>>(
+    boost::mp11::mp_for_each<boost::describe::describe_members<
+      T,
+      boost::describe::mod_inherited | boost::describe::mod_public>>(
       [&](auto D)
       {
         if (!first)
@@ -130,6 +108,7 @@ private:
 
   bool prepareSQLStatements()
   {
+    return false;
   }
 
   bool executeCreateStmt()
@@ -168,6 +147,9 @@ private:
   //! The internal buffer used to facilitate read/write
   //! to the database.
   std::vector<T> dataBuffer_;
+
+  //! Tracks whether or not the DAO is initialized
+  bool isInitialized_;
 };
 
 }  // namespace cpp_sqlite
