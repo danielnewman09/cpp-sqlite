@@ -9,6 +9,13 @@
 #include "sqlite_db/DBDataAccessObject.hpp"
 #include "sqlite_db/DBDatabase.hpp"
 
+struct ChildProduct : public cpp_sqlite::BaseTransferObject
+{
+  double price;
+};
+
+BOOST_DESCRIBE_STRUCT(ChildProduct, (cpp_sqlite::BaseTransferObject), (price));
+
 // Test TransferObject class for demonstration
 struct TestProduct : public cpp_sqlite::BaseTransferObject
 {
@@ -16,12 +23,13 @@ struct TestProduct : public cpp_sqlite::BaseTransferObject
   float price;
   int quantity;
   bool in_stock;
+  ChildProduct child;
 };
 
 // Register the test class with boost::describe
 BOOST_DESCRIBE_STRUCT(TestProduct,
                       (cpp_sqlite::BaseTransferObject),
-                      (name, price, quantity, in_stock));
+                      (name, price, quantity, in_stock, child));
 
 void DatabaseTest::SetUp()
 {
@@ -114,18 +122,12 @@ TEST_F(DatabaseTest, BoostDescribeCreateTableGeneration)
   cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
 
   // Create DataAccessObject for our test TransferObject
-  cpp_sqlite::DataAccessObject<TestProduct> productDAO(db);
+  auto& productDAO = db.getDAO<TestProduct>();
 
   // Verify table creation succeeded
   ASSERT_TRUE(productDAO.isInitialized())
     << "Failed to create table using boost::describe";
 
-
-  if (logger.isConfigured())
-  {
-    logger.getLogger()->info("Successfully demonstrated boost::describe "
-                             "table creation for TestProduct");
-  }
 
   // Clean up
   if (std::filesystem::exists(testDbFile))

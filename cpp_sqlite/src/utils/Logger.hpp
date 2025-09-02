@@ -56,4 +56,10 @@ private:
 
 }  // namespace cpp_sqlite
 
+// Macro for safe logging with logger pointer, level, and variadic arguments
+// Usage: LOG_SAFE(pLogger, spdlog::level::info, "Message with {} args", value)
+#define LOG_SAFE(logger_ptr, level, ...)                          \
+  if ((logger_ptr) != nullptr && (logger_ptr)->should_log(level)) \
+  (logger_ptr)->log(level, __VA_ARGS__)
+
 #endif  // LOGGER_HPP

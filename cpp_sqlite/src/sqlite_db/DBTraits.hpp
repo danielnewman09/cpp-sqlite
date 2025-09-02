@@ -31,13 +31,10 @@ template <typename T>
 concept ValidTransferObject =
   TransferObject<T> && DefaultConstructibleTransferObject<T>;
 
-// Type classification concepts for SQL type mapping
 template <typename T>
 concept isIntegral = std::integral<T>;
-
 template <typename T>
 concept floatingPoint = std::floating_point<T>;
-
 template <typename T>
 concept isString = std::is_same_v<T, std::string>;
 
@@ -45,10 +42,12 @@ concept isString = std::is_same_v<T, std::string>;
  * A type supported by the database is either:
  *  - A basic integral type
  *  - A floating point type
- *  - Or a string
+ *  - A string
+ *  - Or a transfer object
  */
 template <typename T>
-concept isSupportedDBType = isIntegral<T> || floatingPoint<T> || isString<T>;
+concept isSupportedDBType =
+  isIntegral<T> || floatingPoint<T> || isString<T> || ValidTransferObject<T>;
 
 
 }  // namespace cpp_sqlite

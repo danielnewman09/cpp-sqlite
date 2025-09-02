@@ -7,7 +7,7 @@ namespace cpp_sqlite
 Database::Database(std::string url,
                    bool allowWrite,
                    std::shared_ptr<spdlog::logger> pLogger)
-  : db_(nullptr, sqlite3_close), pLogger_{pLogger}
+  : db_(nullptr, sqlite3_close), pLogger_{pLogger}, daos_{}
 {
   if (pLogger_)
   {

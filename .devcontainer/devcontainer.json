@@ -48,7 +48,8 @@
 				"cheshirekow.cmake-format", // For formatting CMake files
 				"matepek.vscode-catch2-test-adapter",
 				"ms-azuretools.vscode-docker", // To manage Docker from within the container]
-				"anthropic.claude-code"
+				"anthropic.claude-code",
+				"qwtel.sqlite-viewer"
 			]
 		}
 	}
