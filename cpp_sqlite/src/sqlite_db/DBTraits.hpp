@@ -9,6 +9,16 @@
 namespace cpp_sqlite
 {
 
+
+/*!
+ * A wrapping alias for the sqlite3 prepared statement
+ * that allows us to use modern C++ memory management
+ * with this library.
+ */
+using PreparedSQLStmt =
+  std::unique_ptr<sqlite3_stmt, decltype(&sqlite3_finalize)>;
+
+
 // Primary concept: Must derive from BaseTransferObject
 template <typename T>
 concept TransferObject = std::derived_from<T, BaseTransferObject>;

@@ -1,5 +1,6 @@
 #include "sqlite_db/DBDatabase.hpp"
 #include <stdexcept>
+#include "sqlite_db/DBDataAccessObject.hpp"
 
 namespace cpp_sqlite
 {
@@ -42,9 +43,9 @@ Database::Database(std::string url,
   db_.reset(raw_db);
 }
 
-sqlite3* Database::getRawDB()
+sqlite3& Database::getRawDB()
 {
-  return db_.get();
+  return *db_;
 }
 
 }  // namespace cpp_sqlite

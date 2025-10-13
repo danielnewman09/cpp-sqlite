@@ -11,7 +11,7 @@
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
 	"mounts": [
 		"source=${localWorkspaceFolder}/.devcontainer/conan-profile,target=/home/ubuntu/.conan2/profiles/default,type=bind,consistency=cached",
-		"source=${localEnv:HOME}${localEnv:USERPROFILE}/.conan2,target=/home/ubuntu/.conan2,type=bind,consistency=cached"
+		"source=${localEnv:HOME}/.conan2,target=/home/ubuntu/.conan2,type=bind,consistency=cached"
 	],
 	// Capabilities needed for debugging with gdb/lldb
 	"runArgs": [
@@ -19,6 +19,7 @@
 		"--security-opt",
 		"seccomp=unconfined"
 	],
+	"postStartCommand": "bash .devcontainer/install-npm.sh",
 	// Environment variables for the container
 	"containerEnv": {
 		"CONAN_HOME": "/home/ubuntu/.conan2"

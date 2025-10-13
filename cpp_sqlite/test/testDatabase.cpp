@@ -38,14 +38,15 @@ void DatabaseTest::SetUp()
     "test_cpp_sqlite", testLogFile, spdlog::level::debug);
 }
 
-void DatabaseTest::TearDown()
+void DatabaseTest::CleanUp(std::string_view dbFile)
 {
   // Clean up any test.db file that might exist
-  if (std::filesystem::exists("test.db"))
+  if (std::filesystem::exists(dbFile))
   {
-    std::filesystem::remove("test.db");
+    std::filesystem::remove(dbFile);
   }
 }
+
 
 TEST_F(DatabaseTest, CreateInMemoryDatabase)
 {
@@ -69,10 +70,8 @@ TEST_F(DatabaseTest, ReadOnlyNonExistentFileThrowsError)
 {
   // Ensure the file doesn't exist
   const std::string nonExistentFile = "non_existent_database.db";
-  if (std::filesystem::exists(nonExistentFile))
-  {
-    std::filesystem::remove(nonExistentFile);
-  }
+
+  CleanUp(nonExistentFile);
 
   // Attempting to open a non-existent file in read-only mode should throw
   ASSERT_THROW(
@@ -84,10 +83,8 @@ TEST_F(DatabaseTest, CreateFileDatabase)
   const std::string testDbFile = "test.db";
 
   // Ensure clean state
-  if (std::filesystem::exists(testDbFile))
-  {
-    std::filesystem::remove(testDbFile);
-  }
+  CleanUp(testDbFile);
+
 
   // Create database file
   {
@@ -110,10 +107,7 @@ TEST_F(DatabaseTest, BoostDescribeCreateTableGeneration)
   const std::string testDbFile = "test_boost_describe.db";
 
   // Ensure clean state
-  if (std::filesystem::exists(testDbFile))
-  {
-    std::filesystem::remove(testDbFile);
-  }
+  CleanUp(testDbFile);
 
   // Get logger instance
   auto& logger = cpp_sqlite::Logger::getInstance();
@@ -128,10 +122,47 @@ TEST_F(DatabaseTest, BoostDescribeCreateTableGeneration)
   ASSERT_TRUE(productDAO.isInitialized())
     << "Failed to create table using boost::describe";
 
-
   // Clean up
-  if (std::filesystem::exists(testDbFile))
-  {
-    std::filesystem::remove(testDbFile);
-  }
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, InsertTestProduct)
+{
+  const std::string testDbFile = "test_insert.db";
+
+  // Ensure clean state
+  CleanUp(testDbFile);
+
+  // Get logger instance
+  auto& logger = cpp_sqlite::Logger::getInstance();
+
+  // Create database
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  // Create DataAccessObject for TestProduct
+  auto& productDAO = db.getDAO<TestProduct>();
+
+  // Verify table creation succeeded
+  ASSERT_TRUE(productDAO.isInitialized())
+    << "Failed to create table using boost::describe";
+
+  // Create a test product with nested ChildProduct
+  ChildProduct childProduct;
+  childProduct.id = 1;
+  childProduct.price = 9.99;
+
+  TestProduct testProduct;
+  testProduct.id = 1;
+  testProduct.name = "Test Widget";
+  testProduct.price = 19.99f;
+  testProduct.quantity = 100;
+  testProduct.in_stock = true;
+  testProduct.child = childProduct;
+
+  // Add product to buffer and insert
+  productDAO.addToBuffer(testProduct);
+  ASSERT_NO_THROW(productDAO.insert()) << "Failed to insert test product";
+
+  // Don't clean up - leave the DB file for manual inspection
+  // CleanUp(testDbFile);
 }

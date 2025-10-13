@@ -1,6 +1,7 @@
 #ifndef DATA_ACCESS_OBJECT_HPP
 #define DATA_ACCESS_OBJECT_HPP
 
+#include <memory>
 #include <sstream>
 #include <string>
 #include <typeinfo>
@@ -12,20 +13,15 @@
 #include <boost/type_index.hpp>
 #include "sqlite3.h"
 
+#include "Logger.hpp"
+#include "sqlite_db/DBDatabase.hpp"
+#include "sqlite_db/DBOperations.hpp"
 #include "sqlite_db/DBTraits.hpp"
 
 namespace cpp_sqlite
 {
 
-
-/*!
- * A wrapping alias for the sqlite3 prepared statement
- * that allows us to use modern C++ memory management
- * with this library.
- */
-using PreparedSQLStmt =
-  std::unique_ptr<sqlite3_stmt, decltype(&sqlite3_finalize)>;
-
+class Database;
 
 /*!
  * Abstract base class for all Data Access Objects
@@ -34,6 +30,14 @@ using PreparedSQLStmt =
 class DAOBase
 {
 public:
+  enum class BaseSQLType : uint8_t
+  {
+    INT,
+    FLOAT,
+    TEXT,
+    BLOB
+  };
+
   virtual ~DAOBase() = default;
 
   /*!
@@ -60,14 +64,14 @@ public:
    * Construct a data access object for this
    * database
    */
-  DataAccessObject(sqlite3* database,
+  DataAccessObject(Database& database,
                    std::shared_ptr<spdlog::logger> pLogger = nullptr)
     : tableName_{boost::typeindex::type_id<T>().pretty_name()},
       insertStmt_{nullptr, sqlite3_finalize},
       createStmt_{nullptr, sqlite3_finalize},
-      db_{database},
       dataBuffer_{},
       isInitialized_{true},
+      db_{database},
       pLogger_{pLogger}
   {
     isInitialized_ = executeCreateStmt();
@@ -84,31 +88,26 @@ public:
     return isInitialized_;
   }
 
+  bool insert(T& data)
+  {
+    if (!insertStmt_)
+    {
+      return false;  // No prepared statement available
+    }
+
+    return db_.insert(insertStmt_, data);
+  }
+
   /*!
    * \brief Perform an insert with the buffer data
    */
   void insert() override
   {
-    if (!insertStmt_)
+    bool success = true;
+
+    for (auto& obj : dataBuffer_)
     {
-      return;  // No prepared statement available
-    }
-
-    for (const auto& obj : dataBuffer_)
-    {
-      // Reset the statement for reuse
-      sqlite3_reset(insertStmt_.get());
-
-      // Bind parameters and execute
-      // Note: This is a simplified implementation
-      // In a real implementation, you'd bind each field of obj to the statement
-      int result = sqlite3_step(insertStmt_.get());
-
-      if (result != SQLITE_DONE)
-      {
-        LOG_SAFE(
-          pLogger_, spdlog::level::err, "Insert failed with code: {}", result);
-      }
+      success &= insert(obj);
     }
   }
 
@@ -222,8 +221,8 @@ private:
     LOG_SAFE(pLogger_, spdlog::level::debug, insertQuery);
 
     sqlite3_stmt* rawPtr = nullptr;
-    int result =
-      sqlite3_prepare_v2(db_, insertQuery.c_str(), -1, &rawPtr, nullptr);
+    int result = sqlite3_prepare_v2(
+      &(db_.getRawDB()), insertQuery.c_str(), -1, &rawPtr, nullptr);
 
     if (result != SQLITE_OK)
     {
@@ -305,8 +304,8 @@ private:
     LOG_SAFE(pLogger_, spdlog::level::debug, createQuery);
 
     sqlite3_stmt* rawPtr = nullptr;
-    int result =
-      sqlite3_prepare_v2(db_, createQuery.c_str(), -1, &rawPtr, nullptr);
+    int result = sqlite3_prepare_v2(
+      &db_.getRawDB(), createQuery.c_str(), -1, &rawPtr, nullptr);
 
     if (result != SQLITE_OK)
     {
@@ -336,8 +335,10 @@ private:
   //! Tracks whether or not the DAO is initialized
   bool isInitialized_;
 
-  //! The raw SQLite database pointer
-  sqlite3* db_;
+  //! Reference to the Database object
+  //! NOTE: This DAO must not outlive the Database object that created it.
+  //! The Database class manages DAO lifetime through its internal storage.
+  Database& db_;
 
   //! The local logger
   std::shared_ptr<spdlog::logger> pLogger_;

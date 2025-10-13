@@ -2,6 +2,7 @@
 target_sources(cpp_sqlite PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/example.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/DBDatabase.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/DBDataAccessObject.cpp
 )
 
 set(
@@ -10,6 +11,7 @@ set(
         ${CMAKE_CURRENT_SOURCE_DIR}/DBBaseTransferObject.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/DBDataAccessObject.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/DBDatabase.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/DBOperations.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/DBTraits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/DBRepeatedFieldTransferObject.hpp
 # Add more headers here as needed

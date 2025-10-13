@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include <filesystem>
+#include <string>
 #include "Logger.hpp"
 
 
@@ -13,7 +14,7 @@ public:
 
 protected:
   void SetUp() override;
-  void TearDown() override;
+  void CleanUp(std::string_view dbFile);
 
 private:
   const static inline std::string testLogFile = "test_database.log";

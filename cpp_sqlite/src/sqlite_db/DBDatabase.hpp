@@ -16,11 +16,16 @@
 
 #include "Logger.hpp"
 #include "sqlite_db/DBBaseTransferObject.hpp"
-#include "sqlite_db/DBDataAccessObject.hpp"
 #include "sqlite_db/DBTraits.hpp"
 
 namespace cpp_sqlite
 {
+
+class DAOBase;
+
+template <ValidTransferObject T>
+class DataAccessObject;
+
 
 class Database
 {
@@ -49,7 +54,7 @@ public:
 
     if (it == daos_.end())
     {
-      auto dao = std::make_unique<DataAccessObject<T>>(getRawDB(), pLogger_);
+      auto dao = std::make_unique<DataAccessObject<T>>(*this, pLogger_);
       auto& daoRef = *dao;
       daos_.emplace(typeIdx, std::move(dao));
       return daoRef;
@@ -72,17 +77,89 @@ public:
    * \brief Perform a generic insert operation
    */
   template <ValidTransferObject T>
-  bool insert(PreparedSQLStmt& stmt, const std::vector<T>& data)
+  bool insert(PreparedSQLStmt& stmt, T& data)
   {
-    // Implementation placeholder - method signature now functional
-    return false;
+    // Reset the statement for reuse
+    sqlite3_reset(stmt.get());
+
+    // Track parameter index (SQLite uses 1-based indexing)
+    int paramIndex = 1;
+
+    // Process public members
+    boost::mp11::mp_for_each<boost::describe::describe_members<
+      T,
+      boost::describe::mod_inherited | boost::describe::mod_public>>(
+      [&](auto D)
+      {
+        // Get member type and map to SQL type
+        using memberType = std::remove_cv_t<
+          std::remove_reference_t<decltype(std::declval<T>().*D.pointer)>>;
+
+        // If the field is, itself, another transfer object, we will
+        // (1) insert the object into its own table
+        // (2) insert the ID of the created object into this table
+        if constexpr (ValidTransferObject<memberType>)
+        {
+          // Bind the ID of the nested object
+          auto& nestedObj = data.*D.pointer;
+
+          getDAO<memberType>().insert(nestedObj);
+
+          if constexpr (isIntegral<decltype(nestedObj.id)>)
+          {
+            sqlite3_bind_int64(
+              stmt.get(), paramIndex, static_cast<sqlite3_int64>(nestedObj.id));
+          }
+          paramIndex++;
+        }
+        else
+        {
+          const auto& value = data.*D.pointer;
+
+          if constexpr (isIntegral<memberType>)
+          {
+            sqlite3_bind_int64(
+              stmt.get(), paramIndex, static_cast<sqlite3_int64>(value));
+          }
+          else if constexpr (floatingPoint<memberType>)
+          {
+            sqlite3_bind_double(
+              stmt.get(), paramIndex, static_cast<double>(value));
+          }
+          else if constexpr (std::is_same_v<memberType, std::string>)
+          {
+            sqlite3_bind_text(stmt.get(),
+                              paramIndex,
+                              value.c_str(),
+                              static_cast<int>(value.length()),
+                              SQLITE_TRANSIENT);
+          }
+          else
+          {
+            // For BLOB or unknown types, bind as null for now
+            sqlite3_bind_null(stmt.get(), paramIndex);
+          }
+          paramIndex++;
+        }
+      });
+
+    // Execute the statement
+    int result = sqlite3_step(stmt.get());
+
+    if (result != SQLITE_DONE)
+    {
+      LOG_SAFE(
+        pLogger_, spdlog::level::err, "Insert failed with code: {}", result);
+    }
+
+    return result == SQLITE_DONE;
   }
 
   /*!
    * \brief Get raw SQLite database pointer for direct access
    * \return Raw sqlite3* pointer
    */
-  sqlite3* getRawDB();
+  sqlite3& getRawDB();
 
 private:
   /*!

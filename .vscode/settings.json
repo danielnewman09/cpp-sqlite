@@ -40,6 +40,7 @@
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}"
     },
+    "cmake.options.statusBarVisibility": "visible",
     "files.associations": {
         "cctype": "cpp",
         "clocale": "cpp",

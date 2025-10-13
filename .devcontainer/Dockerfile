@@ -14,17 +14,14 @@ ARG USER_GID=1000
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential gdb cmake software-properties-common clang clang-format \
-    clang-tidy make ninja-build pipx git curl python3-full python3-pip unzip \
-    libgmp-dev libmpfr-dev libmpc-dev gcc-14 g++-14 \
-    && rm -rf /var/lib/apt/lists/*
+    clang-tidy make ninja-build git curl python3-full python3-pip unzip \
+    libgmp-dev libmpfr-dev libmpc-dev gcc-14 g++-14 
 
-# Install Node.js
-RUN curl -L -o "node-v22.18.0-linux-x64.tar.xz" "https://nodejs.org/dist/v22.18.0/node-v22.18.0-linux-x64.tar.xz" && \
-    tar -xJf "node-v22.18.0-linux-x64.tar.xz" -C "/usr/local" --strip-components=1 && \
-    rm node-v22.18.0-linux-x64.tar.xz
+# Install system dependencies
+RUN apt-get install -y pipx && \
+    pipx ensurepath
 
-# Install global npm packages
-RUN npm install -g @anthropic-ai/claude-code
+RUN rm -rf /var/lib/apt/lists/*
 
 # ============================ THE FIX: PART 2 ============================
 # Create a non-root user with the UID/GID passed in as build arguments.
@@ -42,8 +39,8 @@ USER ubuntu
 ENV PATH="/home/ubuntu/.local/bin:${PATH}"
 
 # Install and configure Conan as the non-root user
-RUN pipx install "conan>=2.0" && \
-    conan profile detect --force && \
+RUN pipx install "conan>=2.0"
+RUN conan profile detect --force && \
     mv /home/ubuntu/default-conan-profile /home/ubuntu/.conan2/profiles/default && \
     conan remote update conancenter --url="https://center2.conan.io"
 
