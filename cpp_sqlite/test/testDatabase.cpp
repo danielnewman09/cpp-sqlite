@@ -8,13 +8,19 @@
 #include "sqlite_db/DBBaseTransferObject.hpp"
 #include "sqlite_db/DBDataAccessObject.hpp"
 #include "sqlite_db/DBDatabase.hpp"
+#include "sqlite_db/DBRepeatedFieldTransferObject.hpp"
 
 struct ChildProduct : public cpp_sqlite::BaseTransferObject
 {
   double price;
 };
 
+
 BOOST_DESCRIBE_STRUCT(ChildProduct, (cpp_sqlite::BaseTransferObject), (price));
+
+BOOST_DESCRIBE_STRUCT(cpp_sqlite::RepeatedFieldTransferObject<ChildProduct>,
+                      (),
+                      (data));
 
 // Test TransferObject class for demonstration
 struct TestProduct : public cpp_sqlite::BaseTransferObject
@@ -23,13 +29,13 @@ struct TestProduct : public cpp_sqlite::BaseTransferObject
   float price;
   int quantity;
   bool in_stock;
-  ChildProduct child;
+  cpp_sqlite::RepeatedFieldTransferObject<ChildProduct> children;
 };
 
 // Register the test class with boost::describe
 BOOST_DESCRIBE_STRUCT(TestProduct,
                       (cpp_sqlite::BaseTransferObject),
-                      (name, price, quantity, in_stock, child));
+                      (name, price, quantity, in_stock, children));
 
 void DatabaseTest::SetUp()
 {
@@ -123,7 +129,7 @@ TEST_F(DatabaseTest, BoostDescribeCreateTableGeneration)
     << "Failed to create table using boost::describe";
 
   // Clean up
-  CleanUp(testDbFile);
+  // CleanUp(testDbFile);
 }
 
 TEST_F(DatabaseTest, InsertTestProduct)
@@ -146,10 +152,9 @@ TEST_F(DatabaseTest, InsertTestProduct)
   ASSERT_TRUE(productDAO.isInitialized())
     << "Failed to create table using boost::describe";
 
+  std::vector<ChildProduct> childrenProducts{{1, 9.99}, {2, 10.01}};
+
   // Create a test product with nested ChildProduct
-  ChildProduct childProduct;
-  childProduct.id = 1;
-  childProduct.price = 9.99;
 
   TestProduct testProduct;
   testProduct.id = 1;
@@ -157,7 +162,7 @@ TEST_F(DatabaseTest, InsertTestProduct)
   testProduct.price = 19.99f;
   testProduct.quantity = 100;
   testProduct.in_stock = true;
-  testProduct.child = childProduct;
+  testProduct.children.data = childrenProducts;
 
   // Add product to buffer and insert
   productDAO.addToBuffer(testProduct);

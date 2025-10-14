@@ -12,6 +12,8 @@
 #include <boost/describe.hpp>
 #include <boost/mp11.hpp>
 #include <boost/unordered_map.hpp>
+
+#include <boost/type_index.hpp>
 #include "sqlite3.h"
 
 #include "Logger.hpp"
@@ -112,6 +114,55 @@ public:
           }
           paramIndex++;
         }
+        else if constexpr (IsRepeatedFieldTransferObject<memberType>)
+        {
+          auto& repeatedFieldObj = data.*D.pointer;
+          using fieldType = RepeatedFieldOfType<memberType>;
+
+          auto memberName = getDAO<T>().getTableName();
+          const std::string dataName =
+            boost::typeindex::type_id<fieldType>().pretty_name();
+          std::string mapTable = "INSERT INTO " + memberName + "_" + dataName +
+                                 "(" + memberName + "_id, " + dataName +
+                                 "_id) VALUES (?, ?);";
+
+          sqlite3_stmt* rawPtr = nullptr;
+          int result = sqlite3_prepare_v2(
+            db_.get(), mapTable.c_str(), -1, &rawPtr, nullptr);
+
+
+          for (auto& repeatedFieldData : repeatedFieldObj.data)
+          {
+            getDAO<fieldType>().insert(repeatedFieldData);
+
+
+            LOG_SAFE(pLogger_,
+                     spdlog::level::debug,
+                     "Binding data ID: {}, and fieldID: {}",
+                     data.id,
+                     repeatedFieldData.id);
+
+            sqlite3_bind_int64(rawPtr, 1, static_cast<sqlite3_int64>(data.id));
+            sqlite3_bind_int64(
+              rawPtr, 2, static_cast<sqlite3_int64>(repeatedFieldData.id));
+
+            // Execute the statement
+            int result = sqlite3_step(rawPtr);
+
+            if (result != SQLITE_DONE)
+            {
+              LOG_SAFE(pLogger_,
+                       spdlog::level::err,
+                       "Insert failed with code: {}",
+                       result);
+            }
+
+            // Reset the statement for reuse
+            sqlite3_reset(rawPtr);
+          }
+          sqlite3_finalize(rawPtr);
+          // do nothing
+        }
         else
         {
           const auto& value = data.*D.pointer;
@@ -139,8 +190,8 @@ public:
             // For BLOB or unknown types, bind as null for now
             sqlite3_bind_null(stmt.get(), paramIndex);
           }
-          paramIndex++;
         }
+        paramIndex++;
       });
 
     // Execute the statement

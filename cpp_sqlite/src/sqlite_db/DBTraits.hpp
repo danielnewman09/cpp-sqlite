@@ -18,7 +18,6 @@ namespace cpp_sqlite
 using PreparedSQLStmt =
   std::unique_ptr<sqlite3_stmt, decltype(&sqlite3_finalize)>;
 
-
 // Primary concept: Must derive from BaseTransferObject
 template <typename T>
 concept TransferObject = std::derived_from<T, BaseTransferObject>;
@@ -42,6 +41,56 @@ concept ValidTransferObject =
   TransferObject<T> && DefaultConstructibleTransferObject<T>;
 
 template <typename T>
+struct is_vector : std::false_type
+{
+};
+
+template <typename T, typename Allocator>
+struct is_vector<std::vector<T, Allocator>> : std::true_type
+{
+};
+
+template <typename T>
+inline constexpr bool is_vector_v = is_vector<T>::value;
+
+template <ValidTransferObject T>
+class RepeatedFieldTransferObject;
+
+template <typename C>
+concept IsRepeatedFieldTransferObject = requires(C c) {
+  // 1. Check for a member named `data`
+  { c.data };
+
+  // 2. Check that the member `data` is a std::vector
+  requires is_vector_v<decltype(c.data)>;
+
+  // 3. Check the element type of the vector against the HasToString concept
+  requires ValidTransferObject<typename decltype(c.data)::value_type>;
+};
+
+
+// --- The core template trait to extract template parameters ---
+// Primary template (general case)
+template <typename T>
+struct GetRepeatedFieldParams
+{
+  static constexpr bool is_specialization = false;
+};
+
+// Partial specialization for `Foo<Bar>`
+template <typename T>
+struct GetRepeatedFieldParams<RepeatedFieldTransferObject<T>>
+{
+  static constexpr bool is_specialization = true;
+  using SpecializationType = T;
+};
+
+// --- A helper alias for cleaner syntax ---
+template <IsRepeatedFieldTransferObject T>
+using RepeatedFieldOfType =
+  typename GetRepeatedFieldParams<T>::SpecializationType;
+
+template <typename T>
 concept isIntegral = std::integral<T>;
 template <typename T>
 concept floatingPoint = std::floating_point<T>;
@@ -53,7 +102,8 @@ concept isString = std::is_same_v<T, std::string>;
  *  - A basic integral type
  *  - A floating point type
  *  - A string
- *  - Or a transfer object
+ *  - A single transfer object
+ *  - Or a repeated field of transfer objects
  */
 template <typename T>
 concept isSupportedDBType =

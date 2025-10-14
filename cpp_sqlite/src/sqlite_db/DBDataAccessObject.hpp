@@ -7,6 +7,8 @@
 #include <typeinfo>
 #include <vector>
 
+#include <mutex>
+
 #include <boost/describe.hpp>
 #include <boost/describe/class.hpp>
 #include <boost/mp11.hpp>
@@ -38,7 +40,10 @@ public:
     BLOB
   };
 
+
   virtual ~DAOBase() = default;
+
+  virtual std::string getTableName() const = 0;
 
   /*!
    * \brief Check if the DAO is properly initialized
@@ -69,7 +74,9 @@ public:
     : tableName_{boost::typeindex::type_id<T>().pretty_name()},
       insertStmt_{nullptr, sqlite3_finalize},
       createStmt_{nullptr, sqlite3_finalize},
-      dataBuffer_{},
+      writeBuffer_{},
+      flushBuffer_{},
+      idCounter_{0},
       isInitialized_{true},
       db_{database},
       pLogger_{pLogger}
@@ -77,6 +84,12 @@ public:
     isInitialized_ = executeCreateStmt();
     isInitialized_ &= prepareInsertStatement();
   }
+
+  std::string getTableName() const
+  {
+    return tableName_;
+  }
+
 
   // Virtual methods from DAOBase
   /*!
@@ -88,6 +101,22 @@ public:
     return isInitialized_;
   }
 
+
+  bool insert(T& data, uint32_t foreignKeyId)
+  {
+    if (!insertStmt_)
+    {
+      return false;  // No prepared statement available
+    }
+
+    // Increment the ID counter and update the id for the data
+    // prior to calling the database insert method.
+    idCounter_++;
+    data.id = idCounter_;
+
+    return db_.insert(insertStmt_, data);
+  }
+
   bool insert(T& data)
   {
     if (!insertStmt_)
@@ -95,20 +124,36 @@ public:
       return false;  // No prepared statement available
     }
 
+    // Increment the ID counter and update the id for the data
+    // prior to calling the database insert method.
+    idCounter_++;
+    data.id = idCounter_;
+
     return db_.insert(insertStmt_, data);
   }
 
   /*!
    * \brief Perform an insert with the buffer data
+   * Thread-safe: Swaps buffers under lock, then processes without lock
    */
   void insert() override
   {
-    bool success = true;
-
-    for (auto& obj : dataBuffer_)
+    // Swap buffers under lock (fast operation)
     {
-      success &= insert(obj);
+      std::lock_guard<std::mutex> lock(bufferMutex_);
+      std::swap(writeBuffer_, flushBuffer_);
     }
+
+    // Now process flushBuffer_ without holding the lock
+    // Writers can continue adding to writeBuffer_ in parallel
+    bool success = true;
+    for (auto& item : flushBuffer_)
+    {
+      success &= insert(item);
+    }
+
+    // Clear the flush buffer after processing
+    flushBuffer_.clear();
   }
 
   /*!
@@ -116,22 +161,26 @@ public:
    */
   void clearBuffer() override
   {
-    dataBuffer_.clear();
+    std::lock_guard<std::mutex> lock(bufferMutex_);
+    writeBuffer_.clear();
+    flushBuffer_.clear();
   }
 
   // Type-specific non-virtual methods
   /*!
-   * \brief Add object to buffer for insertion
+   * \brief Add object to buffer for insertion (thread-safe)
+   * This can be called from any thread
    */
   void addToBuffer(const T& obj)
   {
-    dataBuffer_.push_back(obj);
+    std::lock_guard<std::mutex> lock(bufferMutex_);
+    writeBuffer_.push_back(obj);
   }
 
 private:
   // Helper function to map C++ types to SQL types
   template <isSupportedDBType FieldType>
-  constexpr const char* getSQLType()
+  constexpr std::string getSQLType()
   {
     if constexpr (isIntegral<FieldType>)
     {
@@ -158,8 +207,8 @@ private:
    */
   std::string generateCreateTableSQL()
   {
-    std::ostringstream sql;
-    sql << "CREATE TABLE IF NOT EXISTS " << tableName_ << " (";
+    std::string sql;
+    sql = "CREATE TABLE IF NOT EXISTS " + tableName_ + " (";
 
     bool first = true;
 
@@ -169,44 +218,69 @@ private:
       boost::describe::mod_inherited | boost::describe::mod_public>>(
       [&](auto D)
       {
-        if (!first)
-          sql << ", ";
-
-        // Get member name
-        sql << D.name;
-
         // Get member type and map to SQL type
         using memberType = std::remove_cv_t<
           std::remove_reference_t<decltype(std::declval<T>().*D.pointer)>>;
 
-        // If the field is, itself, another transfer object, we treat
-        // this field in the current table as a key to the table
-        // that the child object presumably exists at.
-        if constexpr (ValidTransferObject<memberType>)
-        {
-          using idType = decltype(std::declval<memberType>().id);
-          sql << "_id" << " " << getSQLType<idType>();
 
-          sql << ", FOREIGN KEY " << "(" << D.name << "_id) REFERENCES "
-              << boost::typeindex::type_id<T>().pretty_name() << "(id)";
+        if constexpr (IsRepeatedFieldTransferObject<memberType>)
+        {
+          using fieldType = RepeatedFieldOfType<memberType>;
+          std::string dataName =
+            boost::typeindex::type_id<fieldType>().pretty_name();
+          std::string mapTable = "CREATE TABLE IF NOT EXISTS " + tableName_ +
+                                 "_" + dataName + "(" + tableName_ +
+                                 "_id INTEGER, " + dataName + "_id INTEGER); ";
+
+          char* err_msg = 0;
+
+          LOG_SAFE(
+            pLogger_, spdlog::level::debug, "Create Table: {}", mapTable);
+
+          int result =
+            sqlite3_exec(&db_.getRawDB(), mapTable.c_str(), 0, 0, &err_msg);
+
+          if (result != SQLITE_OK)
+          {
+            LOG_SAFE(pLogger_, spdlog::level::err, "SQL error: {}", err_msg);
+          }
         }
         else
         {
-          sql << " " << getSQLType<memberType>();
+          if (!first)
+            sql += ", ";
 
-          // Add PRIMARY KEY for id field
-          if (std::string(D.name) == "id")
+          // Get member name
+          sql += D.name;
+
+          // If the field is, itself, another transfer object, we treat
+          // this field in the current table as a key to the table
+          // that the child object presumably exists at.
+          if constexpr (ValidTransferObject<memberType>)
           {
-            sql << " PRIMARY KEY";
+            using idType = decltype(std::declval<memberType>().id);
+            sql += "_id " + getSQLType<idType>();
+
+            sql += ", FOREIGN KEY (" + D.name + "_id) REFERENCES " +
+                   boost::typeindex::type_id<T>().pretty_name() + "(id)";
           }
+          else if constexpr (isSupportedDBType<memberType>)
+          {
+            sql += " " + getSQLType<memberType>();
+
+            // Add PRIMARY KEY for id field
+            if (std::string(D.name) == "id")
+            {
+              sql += " PRIMARY KEY";
+            }
+          }
+
+          first = false;
         }
-
-
-        first = false;
       });
 
-    sql << ");";
-    return sql.str();
+    sql += ");";
+    return sql;
   }
 
   bool prepareSQLStatements()
@@ -227,7 +301,11 @@ private:
     if (result != SQLITE_OK)
     {
       LOG_SAFE(
-        pLogger_, spdlog::level::err, "Could not prepare insert statement");
+        pLogger_,
+        spdlog::level::err,
+        "Could not prepare insert statement for table {}. SQLITE code: {}",
+        tableName_,
+        result);
       return false;
     }
 
@@ -263,12 +341,13 @@ private:
         if constexpr (ValidTransferObject<memberType>)
         {
           columns.push_back(std::string(D.name) + "_id");
+          placeholders.push_back("?");
         }
-        else
+        else if constexpr (isSupportedDBType<memberType>)
         {
           columns.push_back(std::string(D.name));
+          placeholders.push_back("?");
         }
-        placeholders.push_back("?");
       });
 
     // Build the column names part
@@ -303,19 +382,19 @@ private:
 
     LOG_SAFE(pLogger_, spdlog::level::debug, createQuery);
 
-    sqlite3_stmt* rawPtr = nullptr;
-    int result = sqlite3_prepare_v2(
-      &db_.getRawDB(), createQuery.c_str(), -1, &rawPtr, nullptr);
+    int result = sqlite3_exec(&db_.getRawDB(), createQuery.c_str(), 0, 0, 0);
 
     if (result != SQLITE_OK)
     {
+      LOG_SAFE(pLogger_,
+               spdlog::level::err,
+               "Could not execute query. Result code: {}",
+               result);
+
       return false;
     }
 
-    result = sqlite3_step(rawPtr);
-    sqlite3_finalize(rawPtr);
-
-    return (result == SQLITE_DONE);
+    return true;
   }
 
   //! The name of the table accessed by this object.
@@ -328,9 +407,17 @@ private:
   //!<
   PreparedSQLStmt createStmt_;
 
-  //! The internal buffer used to facilitate read/write
-  //! to the database.
-  std::vector<T> dataBuffer_;
+  //! Write buffer - writers add here (protected by mutex)
+  std::vector<T> writeBuffer_;
+
+  //! Flush buffer - DB thread reads from here (no lock needed during flush)
+  std::vector<T> flushBuffer_;
+
+  //! Mutex protecting the write buffer
+  std::mutex bufferMutex_;
+
+  //! The current ID counter for inserting new data
+  uint32_t idCounter_;
 
   //! Tracks whether or not the DAO is initialized
   bool isInitialized_;

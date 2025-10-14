@@ -1,3 +1,0 @@
-[2025-09-01 18:01:31.531] [test_cpp_sqlite] [debug] [thread 67087] Creating database with url: test_boost_describe.db
-[2025-09-01 18:01:31.532] [test_cpp_sqlite] [debug] [thread 67087] CREATE TABLE IF NOT EXISTS TestProduct (id INTEGER PRIMARY KEY, name TEXT, price FLOAT, quantity INTEGER, in_stock INTEGER, child_id INTEGER, FOREIGN KEY (child_id) REFERENCES TestProduct(id));
-[2025-09-01 18:01:31.536] [test_cpp_sqlite] [debug] [thread 67087] INSERT INTO TestProduct (id, name, price, quantity, in_stock, child_id) VALUES (?, ?, ?, ?, ?, ?);
