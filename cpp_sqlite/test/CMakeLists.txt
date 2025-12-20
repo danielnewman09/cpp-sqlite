@@ -3,7 +3,6 @@ enable_testing()
 
 find_package(GTest REQUIRED)
 add_executable(cpp_sqlite_test 
-    testExample.cpp
     testDatabase.cpp
     testDatabase.hpp)
     

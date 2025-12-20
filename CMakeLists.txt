@@ -44,7 +44,7 @@ include(CPack)
 
 
 # Installation rules
-install(TARGETS ${PROJECT_NAME} DESTINATION "./installs"
+install(TARGETS ${PROJECT_NAME} DESTINATION "./installs/"
         RUNTIME DESTINATION bin
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib

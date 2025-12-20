@@ -10,14 +10,50 @@
                 "Release"
             ],
             "default": "Release"
+        },
+        {
+            "id": "conanBuildPolicy",
+            "description": "Conan Build Policy",
+            "type": "pickString",
+            "options": [
+                "missing",
+                "all"
+            ],
+            "default": "missing"
         }
     ],
     "tasks": [
         {
             "label": "Conan Build",
             "type": "shell",
+            "command": "conan build . --build=missing -s build_type=${input:buildType}",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Conan Install",
+            "type": "shell",
             "command": "conan",
-            "args": ["build", ".", "--build=missing", "-s", "build_type=${input:buildType}"],
+            "args": [
+                "install",
+                ".",
+                "--build=missing",
+                "-s",
+                "build_type=${input:buildType}",
+                "-o",
+                "\"&:enable_coverage=${input:enableCoverage}\""
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -36,7 +72,10 @@
             "label": "CMake Build",
             "type": "shell",
             "command": "cmake",
-            "args": ["--build", "${command:cmake.buildDirectory}"],
+            "args": [
+                "--build",
+                "${command:cmake.buildDirectory}"
+            ],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -47,6 +86,20 @@
             "problemMatcher": [
                 "$gcc"
             ]
-        }
+        },
+        {
+            "label": "Create Conan Dependencies",
+            "type": "shell",
+            "command": [
+                "echo '=== Building Conan Dependencies ===';",
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
     ]
 }

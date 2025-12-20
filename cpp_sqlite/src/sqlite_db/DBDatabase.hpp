@@ -67,15 +67,6 @@ public:
   }
 
   /*!
-   * \brief Cascading insert that handles nested transfer objects
-   */
-  template <ValidTransferObject T>
-  void cascadingInsert(const T& obj)
-  {
-    cascadingInsertImpl(obj);
-  }
-
-  /*!
    * \brief Perform a generic insert operation
    */
   template <ValidTransferObject T>
@@ -213,34 +204,6 @@ public:
   sqlite3& getRawDB();
 
 private:
-  /*!
-   * \brief Implementation of cascading insert
-   */
-  template <ValidTransferObject T>
-  void cascadingInsertImpl(const T& obj) const
-  {
-    // Handle nested objects first
-    boost::mp11::mp_for_each<boost::describe::describe_members<
-      T,
-      boost::describe::mod_inherited | boost::describe::mod_public>>(
-      [&](auto D)
-      {
-        using MemberType =
-          std::remove_cv_t<std::remove_reference_t<decltype(obj.*D.pointer)>>;
-
-        if constexpr (ValidTransferObject<MemberType>)
-        {
-          cascadingInsertImpl(obj.*D.pointer);
-        }
-      });
-
-    // Insert current object
-    auto& dao = getDAO<T>();
-    dao.clearBuffer();
-    dao.addToBuffer(obj);
-    dao.insert();
-  }
-
   //!< The unique pointer storing the SQLite database
   //!< object
   std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_;
@@ -251,7 +214,6 @@ private:
   //! DAO storage using boost::unordered_map for better performance
   boost::unordered_map<std::type_index, std::unique_ptr<DAOBase>> daos_;
 };
-
 
 }  // namespace cpp_sqlite
 

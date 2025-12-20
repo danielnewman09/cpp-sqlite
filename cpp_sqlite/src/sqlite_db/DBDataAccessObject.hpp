@@ -2,12 +2,11 @@
 #define DATA_ACCESS_OBJECT_HPP
 
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <typeinfo>
 #include <vector>
-
-#include <mutex>
 
 #include <boost/describe.hpp>
 #include <boost/describe/class.hpp>
@@ -17,7 +16,6 @@
 
 #include "Logger.hpp"
 #include "sqlite_db/DBDatabase.hpp"
-#include "sqlite_db/DBOperations.hpp"
 #include "sqlite_db/DBTraits.hpp"
 
 namespace cpp_sqlite
@@ -32,6 +30,9 @@ class Database;
 class DAOBase
 {
 public:
+  /*!
+   *
+   */
   enum class BaseSQLType : uint8_t
   {
     INT,
@@ -73,7 +74,6 @@ public:
                    std::shared_ptr<spdlog::logger> pLogger = nullptr)
     : tableName_{boost::typeindex::type_id<T>().pretty_name()},
       insertStmt_{nullptr, sqlite3_finalize},
-      createStmt_{nullptr, sqlite3_finalize},
       writeBuffer_{},
       flushBuffer_{},
       idCounter_{0},
@@ -90,8 +90,6 @@ public:
     return tableName_;
   }
 
-
-  // Virtual methods from DAOBase
   /*!
    * \brief Get the initialization status of this DAO
    * \return The initialization status of the object.
@@ -101,27 +99,11 @@ public:
     return isInitialized_;
   }
 
-
-  bool insert(T& data, uint32_t foreignKeyId)
-  {
-    if (!insertStmt_)
-    {
-      return false;  // No prepared statement available
-    }
-
-    // Increment the ID counter and update the id for the data
-    // prior to calling the database insert method.
-    idCounter_++;
-    data.id = idCounter_;
-
-    return db_.insert(insertStmt_, data);
-  }
-
   bool insert(T& data)
   {
     if (!insertStmt_)
     {
-      return false;  // No prepared statement available
+      return false;
     }
 
     // Increment the ID counter and update the id for the data
@@ -138,7 +120,7 @@ public:
    */
   void insert() override
   {
-    // Swap buffers under lock (fast operation)
+    // Swap the write and flush buffers under a lock
     {
       std::lock_guard<std::mutex> lock(bufferMutex_);
       std::swap(writeBuffer_, flushBuffer_);
@@ -166,7 +148,6 @@ public:
     flushBuffer_.clear();
   }
 
-  // Type-specific non-virtual methods
   /*!
    * \brief Add object to buffer for insertion (thread-safe)
    * This can be called from any thread
@@ -207,12 +188,12 @@ private:
    */
   std::string generateCreateTableSQL()
   {
-    std::string sql;
+    std::string sql{};
     sql = "CREATE TABLE IF NOT EXISTS " + tableName_ + " (";
 
     bool first = true;
 
-    // Process public members
+    // Process public and inherited members
     boost::mp11::mp_for_each<boost::describe::describe_members<
       T,
       boost::describe::mod_inherited | boost::describe::mod_public>>(
@@ -221,7 +202,6 @@ private:
         // Get member type and map to SQL type
         using memberType = std::remove_cv_t<
           std::remove_reference_t<decltype(std::declval<T>().*D.pointer)>>;
-
 
         if constexpr (IsRepeatedFieldTransferObject<memberType>)
         {
@@ -235,12 +215,10 @@ private:
           char* err_msg = 0;
 
           LOG_SAFE(
-            pLogger_, spdlog::level::debug, "Create Table: {}", mapTable);
+            pLogger_, spdlog::level::trace, "Create Table: {}", mapTable);
 
-          int result =
-            sqlite3_exec(&db_.getRawDB(), mapTable.c_str(), 0, 0, &err_msg);
-
-          if (result != SQLITE_OK)
+          if (sqlite3_exec(&db_.getRawDB(), mapTable.c_str(), 0, 0, &err_msg) !=
+              SQLITE_OK)
           {
             LOG_SAFE(pLogger_, spdlog::level::err, "SQL error: {}", err_msg);
           }
@@ -376,24 +354,24 @@ private:
     return sql.str();
   }
 
+  /*!
+   * \brief Perform the table creation.
+   * \returns a boolean indicating whether this operation was successful.
+   */
   bool executeCreateStmt()
   {
     std::string createQuery = generateCreateTableSQL();
 
-    LOG_SAFE(pLogger_, spdlog::level::debug, createQuery);
-
+    LOG_SAFE(pLogger_, spdlog::level::trace, "Executing: {}", createQuery);
     int result = sqlite3_exec(&db_.getRawDB(), createQuery.c_str(), 0, 0, 0);
-
     if (result != SQLITE_OK)
     {
       LOG_SAFE(pLogger_,
                spdlog::level::err,
                "Could not execute query. Result code: {}",
                result);
-
       return false;
     }
-
     return true;
   }
 
@@ -403,9 +381,6 @@ private:
   //!< The prepared statement to facilitate inserting
   //!< data into the database
   PreparedSQLStmt insertStmt_;
-
-  //!<
-  PreparedSQLStmt createStmt_;
 
   //! Write buffer - writers add here (protected by mutex)
   std::vector<T> writeBuffer_;
@@ -423,7 +398,6 @@ private:
   bool isInitialized_;
 
   //! Reference to the Database object
-  //! NOTE: This DAO must not outlive the Database object that created it.
   //! The Database class manages DAO lifetime through its internal storage.
   Database& db_;
 

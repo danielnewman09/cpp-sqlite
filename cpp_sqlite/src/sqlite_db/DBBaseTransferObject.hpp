@@ -9,10 +9,17 @@
 namespace cpp_sqlite
 {
 
+/*!
+ * \brief The fundamental transfer object for SQL operations
+ *
+ * The Base Transfer Object simply contains an identifier, used
+ * for SQL operations and assumed to be the primary key for the
+ * associated table. Any subsequent transfer object should inherit
+ * from this to enforce the primary key behavior.
+ */
 struct BaseTransferObject
 {
-  //! The unique identifier for the base
-  //! Transfer object
+  //! The unique identifier for the base Transfer object
   uint32_t id;
 };
 
