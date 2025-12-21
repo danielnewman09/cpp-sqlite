@@ -1,13 +1,31 @@
 from conan import ConanFile
 from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout, CMakeDeps
+from conan.tools.files import copy
+import os
 
 class CppSQLite(ConanFile):
+    name = "cpp_sqlite"
+    version = "0.1.0"
+    license = "MIT"
+    author = "Daniel Newman"
+    url = "https://github.com/danielnewman/cpp-sqlite"
+    description = "A modern C++20 SQLite wrapper using Boost.Describe for reflection"
+    topics = ("sqlite", "database", "cpp20", "boost")
+
     settings = "os", "compiler", "build_type", "arch"
+    options = {"shared": [True, False], "fPIC": [True, False]}
+    default_options = {"shared": False, "fPIC": True}
 
     # Sources are located in the same place as this recipe, copy them to the recipe
-    exports_sources = "../../CMakeLists.txt", "../../src/*", "../../test/*", "../../*.cmake"
+    exports_sources = "CMakeLists.txt", "cpp_sqlite/*"
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
 
     def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
 
         self.options["boost"].without_wave = True
         self.options["boost"].without_type_erasure = True
@@ -53,6 +71,12 @@ class CppSQLite(ConanFile):
         cmake = CMake(self)
         cmake.install()
 
+        # Copy header files
+        copy(self, "*.hpp",
+             src=os.path.join(self.source_folder, "cpp_sqlite", "src"),
+             dst=os.path.join(self.package_folder, "include", "cpp_sqlite"),
+             keep_path=True)
+
     def requirements(self):
         # Regular dependency for the library/app
         self.requires('sqlite3/3.47.0')
@@ -68,4 +92,11 @@ class CppSQLite(ConanFile):
         cmake_layout(self)
 
     def package_info(self):
-        self.cpp_info.libs = ["cpp_sqlite"]  # Adjust based on actual library names
+        self.cpp_info.libs = ["cpp_sqlite"]
+        self.cpp_info.includedirs = ["include"]
+
+        # Set C++ standard requirement
+        self.cpp_info.cxxflags = ["-std=c++20"]
+
+        # Propagate dependencies
+        self.cpp_info.requires = ["sqlite3::sqlite3", "boost::boost", "spdlog::spdlog"]

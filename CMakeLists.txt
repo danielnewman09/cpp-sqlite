@@ -44,12 +44,22 @@ include(CPack)
 
 
 # Installation rules
-install(TARGETS ${PROJECT_NAME} DESTINATION "./installs/"
+install(TARGETS ${PROJECT_NAME}
+        EXPORT ${PROJECT_NAME}Targets
         RUNTIME DESTINATION bin
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
+        INCLUDES DESTINATION include
         )
 
-# Install headers using the variable
-install(FILES ${HEADER_FILES}
-        DESTINATION include/${PROJECT_NAME})        
+# Install all header files
+install(DIRECTORY cpp_sqlite/src/
+        DESTINATION include/${PROJECT_NAME}
+        FILES_MATCHING PATTERN "*.hpp"
+        PATTERN "*.cpp" EXCLUDE)
+
+# Create and install package config files
+install(EXPORT ${PROJECT_NAME}Targets
+        FILE ${PROJECT_NAME}Targets.cmake
+        NAMESPACE ${PROJECT_NAME}::
+        DESTINATION lib/cmake/${PROJECT_NAME})        

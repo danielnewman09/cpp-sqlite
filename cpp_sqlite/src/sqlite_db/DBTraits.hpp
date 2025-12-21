@@ -3,6 +3,7 @@
 
 #include <concepts>
 #include <type_traits>
+#include <vector>
 
 #include "sqlite_db/DBBaseTransferObject.hpp"
 
@@ -56,6 +57,9 @@ inline constexpr bool is_vector_v = is_vector<T>::value;
 template <ValidTransferObject T>
 class RepeatedFieldTransferObject;
 
+template <ValidTransferObject T>
+struct ForeignKey;
+
 template <typename C>
 concept IsRepeatedFieldTransferObject = requires(C c) {
   // 1. Check for a member named `data`
@@ -90,24 +94,63 @@ template <IsRepeatedFieldTransferObject T>
 using RepeatedFieldOfType =
   typename GetRepeatedFieldParams<T>::SpecializationType;
 
+// --- ForeignKey Type Traits ---
+
+// Primary template for detecting ForeignKey
+template <typename T>
+struct is_foreign_key : std::false_type
+{
+};
+
+// Specialization for ForeignKey<T>
+template <ValidTransferObject T>
+struct is_foreign_key<ForeignKey<T>> : std::true_type
+{
+};
+
+// Concept for detecting ForeignKey types
+template <typename T>
+concept IsForeignKey = is_foreign_key<T>::value;
+
+// Extract the referenced type from ForeignKey
+template <typename T>
+struct foreign_key_type
+{
+};
+
+template <ValidTransferObject T>
+struct foreign_key_type<ForeignKey<T>>
+{
+  using type = T;
+};
+
+// Helper alias to get the referenced type
+template <IsForeignKey T>
+using ForeignKeyType = typename foreign_key_type<T>::type;
+
+// --- Basic Type Concepts ---
+
 template <typename T>
 concept isIntegral = std::integral<T>;
 template <typename T>
 concept floatingPoint = std::floating_point<T>;
 template <typename T>
 concept isString = std::is_same_v<T, std::string>;
+template <typename T>
+concept isBlob = std::is_same_v<T, std::vector<uint8_t>>;
 
 /*!
  * A type supported by the database is either:
  *  - A basic integral type
  *  - A floating point type
  *  - A string
+ *  - A BLOB (binary data as std::vector<uint8_t>)
  *  - A single transfer object
  *  - Or a repeated field of transfer objects
  */
 template <typename T>
 concept isSupportedDBType =
-  isIntegral<T> || floatingPoint<T> || isString<T> || ValidTransferObject<T>;
+  isIntegral<T> || floatingPoint<T> || isString<T> || isBlob<T> || ValidTransferObject<T>;
 
 
 }  // namespace cpp_sqlite

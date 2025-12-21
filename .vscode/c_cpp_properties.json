@@ -5,8 +5,8 @@
       "includePath": [
         "${workspaceFolder}/**",
         "${workspaceFolder}/cpp_sqlite",
-        "/Users/danielnewman/.conan2/p/*/p/include",
-        "/opt/homebrew/include",
+        "/Users/danielnewman/.conan2/p/**/p/include",
+        "/opt/homebrew/include"
       ],
       "defines": [],
       "compilerPath": "/usr/bin/clang++",

@@ -2,6 +2,7 @@
 #define BASE_TRANSFER_OBJECT_HPP
 
 #include <cstdint>
+#include <limits>
 
 #include <boost/describe.hpp>
 #include <boost/describe/class.hpp>
@@ -20,7 +21,7 @@ namespace cpp_sqlite
 struct BaseTransferObject
 {
   //! The unique identifier for the base Transfer object
-  uint32_t id;
+  uint32_t id = std::numeric_limits<uint32_t>::max();
 };
 
 // Register the base transfer object with
