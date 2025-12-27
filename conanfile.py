@@ -17,6 +17,7 @@ class CppSQLite(ConanFile):
     default_options = {"shared": False, "fPIC": True}
 
     # Sources are located in the same place as this recipe, copy them to the recipe
+    # Include source files for debugging support
     exports_sources = "CMakeLists.txt", "cpp_sqlite/*"
 
     def config_options(self):
@@ -71,10 +72,14 @@ class CppSQLite(ConanFile):
         cmake = CMake(self)
         cmake.install()
 
-        # Copy header files
-        copy(self, "*.hpp",
+        # Note: cmake.install() handles all header installation via CMakeLists.txt
+        # Headers are installed to: include/cpp_sqlite/src/cpp_sqlite/*.hpp
+        #                           include/cpp_sqlite/src/utils/*.hpp
+
+        # Copy source files for debugging support (allows stepping into library code)
+        copy(self, "*.cpp",
              src=os.path.join(self.source_folder, "cpp_sqlite", "src"),
-             dst=os.path.join(self.package_folder, "include", "cpp_sqlite"),
+             dst=os.path.join(self.package_folder, "src"),
              keep_path=True)
 
     def requirements(self):

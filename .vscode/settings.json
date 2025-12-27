@@ -30,19 +30,32 @@
         "sourceFileMap": "${sourceFileMapObj}",
         "setupCommands": [
             {
-                "description": "Enable pretty-printing for gdb",
-                "text": "-enable-pretty-printing",
+                "description": "Load project LLDB settings for template metaprogramming",
+                "text": "command source ${workspaceFolder}/.lldbinit",
                 "ignoreFailures": true
             },
             {
-                "description": "Load STL pretty printers",
-                "text": "python import sys; sys.path.insert(0, '/usr/share/gcc/python'); from libstdcxx.v6.printers import register_libstdcxx_printers; register_libstdcxx_printers(None)",
+                "description": "Limit expression evaluation to prevent hanging",
+                "text": "settings set target.expr-prefix-max-function-calls 50",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Set timeout for expressions",
+                "text": "settings set target.process.utility-expression-timeout 3",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Limit children display",
+                "text": "settings set target.max-children-count 50",
                 "ignoreFailures": true
             }
         ],
         "externalConsole": false,
         "stopAtEntry": false,
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
+        "logging": {
+            "engineLogging": false
+        }
     },
     "cmake.options.statusBarVisibility": "visible",
     "files.associations": {

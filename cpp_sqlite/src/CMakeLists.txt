@@ -1,2 +1,2 @@
-add_subdirectory(sqlite_db)
+add_subdirectory(cpp_sqlite)
 add_subdirectory(utils)

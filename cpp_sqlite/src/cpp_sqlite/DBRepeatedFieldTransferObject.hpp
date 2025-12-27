@@ -6,7 +6,7 @@
 #include <boost/describe.hpp>
 #include <boost/describe/class.hpp>
 
-#include "sqlite_db/DBTraits.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBTraits.hpp"
 
 namespace cpp_sqlite
 {

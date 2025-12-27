@@ -15,9 +15,10 @@
 #include <boost/type_index.hpp>
 #include "sqlite3.h"
 
-#include "Logger.hpp"
-#include "sqlite_db/DBDatabase.hpp"
-#include "sqlite_db/DBTraits.hpp"
+#include "cpp_sqlite/src/utils/Logger.hpp"
+#include "cpp_sqlite/src/utils/StringUtils.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBDatabase.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBTraits.hpp"
 
 namespace cpp_sqlite
 {
@@ -73,7 +74,7 @@ public:
    */
   DataAccessObject(Database& database,
                    std::shared_ptr<spdlog::logger> pLogger = nullptr)
-    : tableName_{boost::typeindex::type_id<T>().pretty_name()},
+    : tableName_{stripNamespace(boost::typeindex::type_id<T>().pretty_name())},
       insertStmt_{nullptr, sqlite3_finalize},
       selectAllStmt_{nullptr, sqlite3_finalize},
       selectByIdStmt_{nullptr, sqlite3_finalize},
@@ -288,7 +289,7 @@ private:
         {
           using fieldType = RepeatedFieldOfType<memberType>;
           std::string dataName =
-            boost::typeindex::type_id<fieldType>().pretty_name();
+            stripNamespace(boost::typeindex::type_id<fieldType>().pretty_name());
           std::string mapTable = "CREATE TABLE IF NOT EXISTS " + tableName_ +
                                  "_" + dataName + "(" + tableName_ +
                                  "_id INTEGER, " + dataName + "_id INTEGER); ";
@@ -317,7 +318,7 @@ private:
           {
             using ReferencedType = ForeignKeyType<memberType>;
             std::string refTableName =
-              boost::typeindex::type_id<ReferencedType>().pretty_name();
+              stripNamespace(boost::typeindex::type_id<ReferencedType>().pretty_name());
 
             sql += "_id INTEGER";
             foreignKeys += ", FOREIGN KEY (" + std::string(D.name) +
@@ -333,7 +334,7 @@ private:
 
             foreignKeys +=
               ", FOREIGN KEY (" + std::string(D.name) + "_id) REFERENCES " +
-              boost::typeindex::type_id<memberType>().pretty_name() + "(id)";
+              stripNamespace(boost::typeindex::type_id<memberType>().pretty_name()) + "(id)";
           }
           else if constexpr (isSupportedDBType<memberType>)
           {

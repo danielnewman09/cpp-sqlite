@@ -16,10 +16,11 @@
 #include <boost/type_index.hpp>
 #include "sqlite3.h"
 
-#include "Logger.hpp"
-#include "sqlite_db/DBBaseTransferObject.hpp"
-#include "sqlite_db/DBTraits.hpp"
-#include "sqlite_db/DBForeignKey.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBBaseTransferObject.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBForeignKey.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBTraits.hpp"
+#include "cpp_sqlite/src/utils/Logger.hpp"
+#include "cpp_sqlite/src/utils/StringUtils.hpp"
 
 namespace cpp_sqlite
 {
@@ -109,10 +110,10 @@ public:
             // Build the query to get related IDs from junction table
             auto memberName = getDAO<T>().getTableName();
             const std::string dataName =
-              boost::typeindex::type_id<fieldType>().pretty_name();
-            std::string junctionQuery =
-              "SELECT " + dataName + "_id FROM " + memberName + "_" + dataName +
-              " WHERE " + memberName + "_id = ?;";
+              stripNamespace(boost::typeindex::type_id<fieldType>().pretty_name());
+            std::string junctionQuery = "SELECT " + dataName + "_id FROM " +
+                                        memberName + "_" + dataName +
+                                        " WHERE " + memberName + "_id = ?;";
 
             LOG_SAFE(pLogger_,
                      spdlog::level::debug,
@@ -184,8 +185,8 @@ public:
           }
           else if constexpr (floatingPoint<memberType>)
           {
-            obj.*D.pointer =
-              static_cast<memberType>(sqlite3_column_double(stmt.get(), columnIndex));
+            obj.*D.pointer = static_cast<memberType>(
+              sqlite3_column_double(stmt.get(), columnIndex));
             columnIndex++;
           }
           else if constexpr (isString<memberType>)
@@ -275,14 +276,13 @@ public:
 
           auto memberName = getDAO<T>().getTableName();
           const std::string dataName =
-            boost::typeindex::type_id<fieldType>().pretty_name();
+            stripNamespace(boost::typeindex::type_id<fieldType>().pretty_name());
           std::string mapTable = "INSERT INTO " + memberName + "_" + dataName +
                                  "(" + memberName + "_id, " + dataName +
                                  "_id) VALUES (?, ?);";
 
           sqlite3_stmt* rawPtr = nullptr;
-          int result = sqlite3_prepare_v2(
-            db_.get(), mapTable.c_str(), -1, &rawPtr, nullptr);
+          sqlite3_prepare_v2(db_.get(), mapTable.c_str(), -1, &rawPtr, nullptr);
 
 
           for (auto& repeatedFieldData : repeatedFieldObj.data)
@@ -315,7 +315,8 @@ public:
             sqlite3_reset(rawPtr);
           }
           sqlite3_finalize(rawPtr);
-          // do nothing - paramIndex stays the same as repeated fields don't add columns to parent table
+          // do nothing - paramIndex stays the same as repeated fields don't add
+          // columns to parent table
         }
         else
         {

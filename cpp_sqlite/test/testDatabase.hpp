@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 #include <string>
-#include "Logger.hpp"
+#include "cpp_sqlite/src/utils/Logger.hpp"
 
 
 class DatabaseTest : public ::testing::Test

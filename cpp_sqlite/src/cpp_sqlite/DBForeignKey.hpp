@@ -6,6 +6,8 @@
 
 #include <boost/describe.hpp>
 
+#include "cpp_sqlite/src/cpp_sqlite/DBTraits.hpp"
+
 namespace cpp_sqlite
 {
 
@@ -61,7 +63,9 @@ struct ForeignKey
   /*!
    * \brief Construct from an ID
    */
-  explicit ForeignKey(uint32_t foreignId) : id(foreignId) {}
+  explicit ForeignKey(uint32_t foreignId) : id(foreignId)
+  {
+  }
 
   /*!
    * \brief Resolve the foreign key to the full object
@@ -73,7 +77,10 @@ struct ForeignKey
   /*!
    * \brief Check if this FK is set (non-zero ID)
    */
-  bool isSet() const { return id != 0; }
+  bool isSet() const
+  {
+    return id != 0;
+  }
 
   /*!
    * \brief Assignment from ID
@@ -87,15 +94,30 @@ struct ForeignKey
   /*!
    * \brief Comparison operators
    */
-  bool operator==(const ForeignKey& other) const { return id == other.id; }
-  bool operator!=(const ForeignKey& other) const { return id != other.id; }
-  bool operator==(uint32_t otherId) const { return id == otherId; }
-  bool operator!=(uint32_t otherId) const { return id != otherId; }
+  bool operator==(const ForeignKey& other) const
+  {
+    return id == other.id;
+  }
+  bool operator!=(const ForeignKey& other) const
+  {
+    return id != other.id;
+  }
+  bool operator==(uint32_t otherId) const
+  {
+    return id == otherId;
+  }
+  bool operator!=(uint32_t otherId) const
+  {
+    return id != otherId;
+  }
 
   /*!
    * \brief Implicit conversion to uint32_t for convenience
    */
-  operator uint32_t() const { return id; }
+  operator uint32_t() const
+  {
+    return id;
+  }
 };
 
 // Register ForeignKey with Boost.Describe

@@ -4,11 +4,11 @@
 #include <boost/describe.hpp>
 #include <boost/describe/class.hpp>
 
+#include "cpp_sqlite/src/cpp_sqlite/DBBaseTransferObject.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBDataAccessObject.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBDatabase.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBRepeatedFieldTransferObject.hpp"
 #include "cpp_sqlite/test/testDatabase.hpp"
-#include "sqlite_db/DBBaseTransferObject.hpp"
-#include "sqlite_db/DBDataAccessObject.hpp"
-#include "sqlite_db/DBDatabase.hpp"
-#include "sqlite_db/DBRepeatedFieldTransferObject.hpp"
 
 struct ChildProduct : public cpp_sqlite::BaseTransferObject
 {
@@ -139,6 +139,7 @@ TEST_F(DatabaseTest, InsertTestProduct)
   // Ensure clean state
   CleanUp(testDbFile);
 
+
   // Get logger instance
   auto& logger = cpp_sqlite::Logger::getInstance();
 
@@ -152,8 +153,8 @@ TEST_F(DatabaseTest, InsertTestProduct)
   ASSERT_TRUE(productDAO.isInitialized())
     << "Failed to create table using boost::describe";
 
-  std::vector<ChildProduct> childrenProducts{ChildProduct{1, 9.99},
-                                             ChildProduct{2, 10.01}};
+  std::vector<ChildProduct> childrenProducts{ChildProduct{{1}, 9.99},
+                                             ChildProduct{{2}, 10.01}};
 
   // Create a test product with nested ChildProduct
 
@@ -366,9 +367,9 @@ TEST_F(DatabaseTest, SelectWithRepeatedFields)
 
   // Add child products
   std::vector<ChildProduct> children{
-    ChildProduct{1, 49.99},  // Mouse
-    ChildProduct{2, 79.99},  // Keyboard
-    ChildProduct{3, 29.99}   // USB Cable
+    ChildProduct{{1}, 49.99},  // Mouse
+    ChildProduct{{2}, 79.99},  // Keyboard
+    ChildProduct{{3}, 29.99}   // USB Cable
   };
   product.children.data = children;
 
@@ -603,6 +604,62 @@ TEST_F(DatabaseTest, ForeignKeyMultipleReferences)
     EXPECT_FLOAT_EQ(vertex->y, static_cast<float>(i * 20));
     EXPECT_FLOAT_EQ(vertex->z, static_cast<float>(i * 30));
   }
+
+  CleanUp(testDbFile);
+}
+
+// Test structures in a namespace to verify namespace stripping
+namespace my_app
+{
+
+struct NamespacedProduct : public cpp_sqlite::BaseTransferObject
+{
+  std::string name;
+  float price;
+};
+
+
+BOOST_DESCRIBE_STRUCT(NamespacedProduct,
+                      (cpp_sqlite::BaseTransferObject),
+                      (name, price));
+
+}  // namespace my_app
+
+
+TEST_F(DatabaseTest, NamespacedTypes)
+{
+  const std::string testDbFile = "test_namespaced.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& productDAO = db.getDAO<my_app::NamespacedProduct>();
+
+  // Verify that table name has namespace stripped
+  std::string tableName = productDAO.getTableName();
+  EXPECT_EQ(tableName, "NamespacedProduct")
+    << "Table name should have namespace stripped";
+
+  // Verify table name does NOT contain "::"
+  EXPECT_EQ(tableName.find("::"), std::string::npos)
+    << "Table name should not contain namespace delimiter";
+
+  // Insert a record to verify it works
+  my_app::NamespacedProduct product;
+  product.name = "Test Product";
+  product.price = 19.99f;
+
+  productDAO.addToBuffer(product);
+  ASSERT_NO_THROW(productDAO.insert())
+    << "Insert should succeed with namespaced type";
+
+  // Verify we can retrieve it
+  auto products = productDAO.selectAll();
+  ASSERT_EQ(products.size(), 1);
+  EXPECT_EQ(products[0].name, "Test Product");
+  EXPECT_FLOAT_EQ(products[0].price, 19.99f);
 
   CleanUp(testDbFile);
 }

@@ -5,7 +5,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "sqlite_db/DBBaseTransferObject.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBBaseTransferObject.hpp"
 
 namespace cpp_sqlite
 {
@@ -55,7 +55,7 @@ template <typename T>
 inline constexpr bool is_vector_v = is_vector<T>::value;
 
 template <ValidTransferObject T>
-class RepeatedFieldTransferObject;
+struct RepeatedFieldTransferObject;
 
 template <ValidTransferObject T>
 struct ForeignKey;
@@ -149,8 +149,8 @@ concept isBlob = std::is_same_v<T, std::vector<uint8_t>>;
  *  - Or a repeated field of transfer objects
  */
 template <typename T>
-concept isSupportedDBType =
-  isIntegral<T> || floatingPoint<T> || isString<T> || isBlob<T> || ValidTransferObject<T>;
+concept isSupportedDBType = isIntegral<T> || floatingPoint<T> || isString<T> ||
+                            isBlob<T> || ValidTransferObject<T>;
 
 
 }  // namespace cpp_sqlite

@@ -154,6 +154,20 @@
                 "panel": "shared"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "Conan: Create Both Debug and Release Packages",
+            "type": "shell",
+            "command": "echo '=== Building Debug Package ===' && conan create . --name=cpp_sqlite --version=0.1.0 --build=missing -s build_type=Debug && echo '\n=== Building Release Package ===' && conan create . --name=cpp_sqlite --version=0.1.0 --build=missing -s build_type=Release && echo '\n=== Both packages created successfully ===' && conan list 'cpp_sqlite/*:*'",
+            "group": "none",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": false
+            },
+            "problemMatcher": ["$gcc"]
         }
     ]
 }

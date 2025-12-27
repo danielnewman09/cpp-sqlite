@@ -1,6 +1,6 @@
-#include "sqlite_db/DBDatabase.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBDatabase.hpp"
 #include <stdexcept>
-#include "sqlite_db/DBDataAccessObject.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBDataAccessObject.hpp"
 
 namespace cpp_sqlite
 {

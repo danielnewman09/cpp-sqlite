@@ -17,14 +17,17 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(${PROJECT_NAME} 
         PUBLIC 
                 spdlog::spdlog
+                boost::boost
         PRIVATE
                 SQLite::SQLite3
-                boost::boost)
+                )
 
 # Add all relevant include directories
+# For build: include from project root to allow cpp_sqlite/src/... paths
+# For install: include from install root to allow cpp_sqlite/src/... paths
 target_include_directories(${PROJECT_NAME} PUBLIC
 $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/cpp_sqlite/src/utils>
+$<INSTALL_INTERFACE:include>
 )
 
 # Find the packages (dependencies) provided by Conan
@@ -52,11 +55,15 @@ install(TARGETS ${PROJECT_NAME}
         INCLUDES DESTINATION include
         )
 
-# Install all header files
-install(DIRECTORY cpp_sqlite/src/
+# Install all header files maintaining directory structure
+# This creates: include/cpp_sqlite/src/cpp_sqlite/*.hpp
+#               include/cpp_sqlite/src/utils/*.hpp
+# Allowing includes like: #include "cpp_sqlite/src/cpp_sqlite/DBDatabase.hpp"
+install(DIRECTORY cpp_sqlite/
         DESTINATION include/${PROJECT_NAME}
         FILES_MATCHING PATTERN "*.hpp"
-        PATTERN "*.cpp" EXCLUDE)
+        PATTERN "*.cpp" EXCLUDE
+        PATTERN "test" EXCLUDE)
 
 # Create and install package config files
 install(EXPORT ${PROJECT_NAME}Targets
