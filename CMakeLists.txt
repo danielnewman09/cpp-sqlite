@@ -18,7 +18,6 @@ target_link_libraries(${PROJECT_NAME}
         PUBLIC 
                 spdlog::spdlog
                 boost::boost
-        PRIVATE
                 SQLite::SQLite3
                 )
 
@@ -66,6 +65,30 @@ install(DIRECTORY cpp_sqlite/
         PATTERN "test" EXCLUDE)
 
 # Create and install package config files
+include(CMakePackageConfigHelpers)
+
+# Generate the config file that includes the exports
+configure_package_config_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+        INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Generate version file
+write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+)
+
+# Install the configuration files
+install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+        DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Install the targets file
 install(EXPORT ${PROJECT_NAME}Targets
         FILE ${PROJECT_NAME}Targets.cmake
         NAMESPACE ${PROJECT_NAME}::

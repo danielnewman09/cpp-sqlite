@@ -55,15 +55,19 @@ struct ForeignKey
   //! The ID of the referenced object
   uint32_t id{0};
 
+  // The data stored in the foreign key table - loaded on demand
+  std::optional<T> data_;
+
   /*!
-   * \brief Default constructor - creates unset FK (id = 0)
+   * \brief Default
+    constructor - creates unset FK (id = 0)
    */
   ForeignKey() = default;
 
   /*!
    * \brief Construct from an ID
    */
-  explicit ForeignKey(uint32_t foreignId) : id(foreignId)
+  explicit ForeignKey(uint32_t foreignId) : id{foreignId}, data_{std::nullopt}
   {
   }
 
@@ -72,7 +76,7 @@ struct ForeignKey
    * \param db Reference to the database
    * \return Optional containing the loaded object, or empty if not found
    */
-  std::optional<T> resolve(Database& db) const;
+  std::optional<std::reference_wrapper<const T>> resolve(Database& db);
 
   /*!
    * \brief Check if this FK is set (non-zero ID)
@@ -81,48 +85,7 @@ struct ForeignKey
   {
     return id != 0;
   }
-
-  /*!
-   * \brief Assignment from ID
-   */
-  ForeignKey& operator=(uint32_t newId)
-  {
-    id = newId;
-    return *this;
-  }
-
-  /*!
-   * \brief Comparison operators
-   */
-  bool operator==(const ForeignKey& other) const
-  {
-    return id == other.id;
-  }
-  bool operator!=(const ForeignKey& other) const
-  {
-    return id != other.id;
-  }
-  bool operator==(uint32_t otherId) const
-  {
-    return id == otherId;
-  }
-  bool operator!=(uint32_t otherId) const
-  {
-    return id != otherId;
-  }
-
-  /*!
-   * \brief Implicit conversion to uint32_t for convenience
-   */
-  operator uint32_t() const
-  {
-    return id;
-  }
 };
-
-// Register ForeignKey with Boost.Describe
-// Note: We can't use BOOST_DESCRIBE_STRUCT here because it's a template
-// Instead, we'll handle it specially in the type detection logic
 
 }  // namespace cpp_sqlite
 

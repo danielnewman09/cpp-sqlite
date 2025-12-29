@@ -18,7 +18,7 @@ class CppSQLite(ConanFile):
 
     # Sources are located in the same place as this recipe, copy them to the recipe
     # Include source files for debugging support
-    exports_sources = "CMakeLists.txt", "cpp_sqlite/*"
+    exports_sources = "CMakeLists.txt", "Config.cmake.in", "cpp_sqlite/*"
 
     def config_options(self):
         if self.settings.os == "Windows":

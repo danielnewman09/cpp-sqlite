@@ -1,10 +1,5 @@
-[2025-12-20 15:20:36.317] [test_cpp_sqlite] [debug] [thread 752968] Creating database with url: test_foreign_key.db
-[2025-12-20 15:20:36.318] [test_cpp_sqlite] [debug] [thread 752968] INSERT INTO Vertex3D (id, x, y, z) VALUES (?, ?, ?, ?);
-[2025-12-20 15:20:36.318] [test_cpp_sqlite] [debug] [thread 752968] SELECT id, x, y, z FROM Vertex3D;
-[2025-12-20 15:20:36.318] [test_cpp_sqlite] [debug] [thread 752968] SELECT id, x, y, z FROM Vertex3D WHERE id = ?;
-[2025-12-20 15:20:36.319] [test_cpp_sqlite] [debug] [thread 752968] INSERT INTO RigidBody (id, name, mass, centerOfMass_id, initialPosition_id) VALUES (?, ?, ?, ?, ?);
-[2025-12-20 15:20:36.319] [test_cpp_sqlite] [debug] [thread 752968] SELECT id, name, mass, centerOfMass_id, initialPosition_id FROM RigidBody;
-[2025-12-20 15:20:36.319] [test_cpp_sqlite] [debug] [thread 752968] SELECT id, name, mass, centerOfMass_id, initialPosition_id FROM RigidBody WHERE id = ?;
-[2025-12-20 15:20:42.417] [test_cpp_sqlite] [warning] [thread 752968] Manual ID 100 is higher than current counter 0. Updating counter to prevent future conflicts.
-[2025-12-20 15:20:45.471] [test_cpp_sqlite] [warning] [thread 752968] Manual ID 1 is higher than current counter 0. Updating counter to prevent future conflicts.
-[2025-12-20 15:20:48.881] [test_cpp_sqlite] [warning] [thread 752968] Manual ID 200 is higher than current counter 100. Updating counter to prevent future conflicts.
+[2025-12-28 00:52:37.771] [test_cpp_sqlite] [debug] [thread 498260] Creating database with url: test_foreign_key_null.db
+[2025-12-28 00:52:43.702] [test_cpp_sqlite] [debug] [thread 498260] INSERT INTO RigidBody (id, name, mass, centerOfMass_id, initialPosition_id) VALUES (?, ?, ?, ?, ?);
+[2025-12-28 00:52:43.702] [test_cpp_sqlite] [debug] [thread 498260] SELECT id, name, mass, centerOfMass_id, initialPosition_id FROM RigidBody;
+[2025-12-28 00:52:43.702] [test_cpp_sqlite] [debug] [thread 498260] SELECT id, name, mass, centerOfMass_id, initialPosition_id FROM RigidBody WHERE id = ?;
+[2025-12-28 00:52:43.702] [test_cpp_sqlite] [warning] [thread 498260] Manual ID 1 is higher than current counter 0. Updating counter to prevent future conflicts.

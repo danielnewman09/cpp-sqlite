@@ -17,6 +17,7 @@
 #include "sqlite3.h"
 
 #include "cpp_sqlite/src/cpp_sqlite/DBBaseTransferObject.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBDAOBase.hpp"
 #include "cpp_sqlite/src/cpp_sqlite/DBForeignKey.hpp"
 #include "cpp_sqlite/src/cpp_sqlite/DBTraits.hpp"
 #include "cpp_sqlite/src/utils/Logger.hpp"
@@ -25,7 +26,6 @@
 namespace cpp_sqlite
 {
 
-class DAOBase;
 
 template <ValidTransferObject T>
 class DataAccessObject;
@@ -109,8 +109,8 @@ public:
 
             // Build the query to get related IDs from junction table
             auto memberName = getDAO<T>().getTableName();
-            const std::string dataName =
-              stripNamespace(boost::typeindex::type_id<fieldType>().pretty_name());
+            const std::string dataName = stripNamespace(
+              boost::typeindex::type_id<fieldType>().pretty_name());
             std::string junctionQuery = "SELECT " + dataName + "_id FROM " +
                                         memberName + "_" + dataName +
                                         " WHERE " + memberName + "_id = ?;";
@@ -275,8 +275,8 @@ public:
           using fieldType = RepeatedFieldOfType<memberType>;
 
           auto memberName = getDAO<T>().getTableName();
-          const std::string dataName =
-            stripNamespace(boost::typeindex::type_id<fieldType>().pretty_name());
+          const std::string dataName = stripNamespace(
+            boost::typeindex::type_id<fieldType>().pretty_name());
           std::string mapTable = "INSERT INTO " + memberName + "_" + dataName +
                                  "(" + memberName + "_id, " + dataName +
                                  "_id) VALUES (?, ?);";
@@ -393,13 +393,15 @@ private:
 
 // Implementation of ForeignKey::resolve() (needs Database definition)
 template <ValidTransferObject T>
-std::optional<T> ForeignKey<T>::resolve(Database& db) const
+std::optional<std::reference_wrapper<const T>> ForeignKey<T>::resolve(
+  Database& db)
 {
-  if (id == 0)
+  if (isSet() && data_ == std::nullopt)
   {
-    return std::nullopt;
+    data_ = db.getDAO<T>().selectById(id);
   }
-  return db.getDAO<T>().selectById(id);
+
+  return std::cref(data_.value());
 }
 
 }  // namespace cpp_sqlite

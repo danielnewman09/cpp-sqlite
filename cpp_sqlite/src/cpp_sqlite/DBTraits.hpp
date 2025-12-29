@@ -5,6 +5,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "sqlite3.h"
+
 #include "cpp_sqlite/src/cpp_sqlite/DBBaseTransferObject.hpp"
 
 namespace cpp_sqlite

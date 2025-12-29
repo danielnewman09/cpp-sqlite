@@ -465,8 +465,8 @@ TEST_F(DatabaseTest, ForeignKeyLazyLoading)
   body.id = 1;
   body.name = "Test Cube";
   body.mass = 50.0f;
-  body.centerOfMass = 100;        // Just store the ID (lazy FK)
-  body.initialPosition.id = 200;  // Eagerly loaded (auto-inserted)
+  body.centerOfMass.id = uint32_t{100};  // Just store the ID (lazy FK)
+  body.initialPosition.id = 200;         // Eagerly loaded (auto-inserted)
   body.initialPosition.x = 0.0f;
   body.initialPosition.y = 0.0f;
   body.initialPosition.z = 0.0f;
@@ -487,15 +487,16 @@ TEST_F(DatabaseTest, ForeignKeyLazyLoading)
   EXPECT_TRUE(loadedBody->centerOfMass.isSet());
 
   // NOW explicitly resolve the ForeignKey
-  auto resolvedVertex = loadedBody->centerOfMass.resolve(db);
-
+  const auto& resolvedVertexOpt = loadedBody->centerOfMass.resolve(db);
   // Verify the vertex was loaded
-  ASSERT_TRUE(resolvedVertex.has_value())
+  ASSERT_TRUE(resolvedVertexOpt.has_value())
     << "ForeignKey should resolve to vertex";
-  EXPECT_EQ(resolvedVertex->id, 100);
-  EXPECT_FLOAT_EQ(resolvedVertex->x, 5.0f);
-  EXPECT_FLOAT_EQ(resolvedVertex->y, 10.0f);
-  EXPECT_FLOAT_EQ(resolvedVertex->z, 15.0f);
+
+  const auto& resolvedVertex = std::move(resolvedVertexOpt->get());
+  EXPECT_EQ(resolvedVertex.id, 100);
+  EXPECT_FLOAT_EQ(resolvedVertex.x, 5.0f);
+  EXPECT_FLOAT_EQ(resolvedVertex.y, 10.0f);
+  EXPECT_FLOAT_EQ(resolvedVertex.z, 15.0f);
 
   // Verify eager-loaded nested object was populated
   EXPECT_EQ(loadedBody->initialPosition.id, 200);
@@ -575,13 +576,13 @@ TEST_F(DatabaseTest, ForeignKeyMultipleReferences)
   vertexDAO.insert();
 
   // Create bodies referencing different vertices
-  for (int i = 1; i <= 3; i++)
+  for (uint32_t i = 1; i <= 3; i++)
   {
     RigidBody b;
     b.id = i;
     b.name = "Body " + std::to_string(i);
     b.mass = static_cast<float>(i * 100);
-    b.centerOfMass = i;  // FK to vertex with same ID
+    b.centerOfMass.id = i;  // FK to vertex with same ID
     b.initialPosition.x = 0.0f;
     b.initialPosition.y = 0.0f;
     b.initialPosition.z = 0.0f;
@@ -597,12 +598,15 @@ TEST_F(DatabaseTest, ForeignKeyMultipleReferences)
 
     EXPECT_EQ(body->centerOfMass.id, i);
 
-    auto vertex = body->centerOfMass.resolve(db);
-    ASSERT_TRUE(vertex.has_value());
-    EXPECT_EQ(vertex->id, i);
-    EXPECT_FLOAT_EQ(vertex->x, static_cast<float>(i * 10));
-    EXPECT_FLOAT_EQ(vertex->y, static_cast<float>(i * 20));
-    EXPECT_FLOAT_EQ(vertex->z, static_cast<float>(i * 30));
+    const auto& vertexOpt = body->centerOfMass.resolve(db);
+    ASSERT_TRUE(vertexOpt.has_value());
+
+    const auto& vertex = std::move(vertexOpt->get());
+
+    EXPECT_EQ(vertex.id, i);
+    EXPECT_FLOAT_EQ(vertex.x, static_cast<float>(i * 10));
+    EXPECT_FLOAT_EQ(vertex.y, static_cast<float>(i * 20));
+    EXPECT_FLOAT_EQ(vertex.z, static_cast<float>(i * 30));
   }
 
   CleanUp(testDbFile);

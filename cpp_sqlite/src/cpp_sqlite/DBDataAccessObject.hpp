@@ -15,54 +15,16 @@
 #include <boost/type_index.hpp>
 #include "sqlite3.h"
 
-#include "cpp_sqlite/src/utils/Logger.hpp"
-#include "cpp_sqlite/src/utils/StringUtils.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBDAOBase.hpp"
 #include "cpp_sqlite/src/cpp_sqlite/DBDatabase.hpp"
 #include "cpp_sqlite/src/cpp_sqlite/DBTraits.hpp"
+#include "cpp_sqlite/src/utils/Logger.hpp"
+#include "cpp_sqlite/src/utils/StringUtils.hpp"
 
 namespace cpp_sqlite
 {
 
 class Database;
-
-/*!
- * Abstract base class for all Data Access Objects
- * Provides common interface for polymorphic storage
- */
-class DAOBase
-{
-public:
-  /*!
-   *
-   */
-  enum class BaseSQLType : uint8_t
-  {
-    INT,
-    FLOAT,
-    TEXT,
-    BLOB
-  };
-
-
-  virtual ~DAOBase() = default;
-
-  virtual std::string getTableName() const = 0;
-
-  /*!
-   * \brief Check if the DAO is properly initialized
-   */
-  virtual bool isInitialized() const = 0;
-
-  /*!
-   * \brief Perform insert operation with buffered data
-   */
-  virtual void insert() = 0;
-
-  /*!
-   * \brief Clear the internal data buffer
-   */
-  virtual void clearBuffer() = 0;
-};
 
 template <ValidTransferObject T>
 class DataAccessObject : public DAOBase
@@ -128,10 +90,12 @@ public:
     }
     else
     {
-      // Manual ID is valid and higher than counter - update counter to prevent conflicts
+      // Manual ID is valid and higher than counter - update counter to prevent
+      // conflicts
       LOG_SAFE(pLogger_,
                spdlog::level::warn,
-               "Manual ID {} is higher than current counter {}. Updating counter to prevent future conflicts.",
+               "Manual ID {} is higher than current counter {}. Updating "
+               "counter to prevent future conflicts.",
                data.id,
                idCounter_);
       idCounter_ = data.id;
@@ -288,8 +252,8 @@ private:
         if constexpr (IsRepeatedFieldTransferObject<memberType>)
         {
           using fieldType = RepeatedFieldOfType<memberType>;
-          std::string dataName =
-            stripNamespace(boost::typeindex::type_id<fieldType>().pretty_name());
+          std::string dataName = stripNamespace(
+            boost::typeindex::type_id<fieldType>().pretty_name());
           std::string mapTable = "CREATE TABLE IF NOT EXISTS " + tableName_ +
                                  "_" + dataName + "(" + tableName_ +
                                  "_id INTEGER, " + dataName + "_id INTEGER); ";
@@ -317,8 +281,8 @@ private:
           if constexpr (IsForeignKey<memberType>)
           {
             using ReferencedType = ForeignKeyType<memberType>;
-            std::string refTableName =
-              stripNamespace(boost::typeindex::type_id<ReferencedType>().pretty_name());
+            std::string refTableName = stripNamespace(
+              boost::typeindex::type_id<ReferencedType>().pretty_name());
 
             sql += "_id INTEGER";
             foreignKeys += ", FOREIGN KEY (" + std::string(D.name) +
@@ -334,7 +298,9 @@ private:
 
             foreignKeys +=
               ", FOREIGN KEY (" + std::string(D.name) + "_id) REFERENCES " +
-              stripNamespace(boost::typeindex::type_id<memberType>().pretty_name()) + "(id)";
+              stripNamespace(
+                boost::typeindex::type_id<memberType>().pretty_name()) +
+              "(id)";
           }
           else if constexpr (isSupportedDBType<memberType>)
           {
