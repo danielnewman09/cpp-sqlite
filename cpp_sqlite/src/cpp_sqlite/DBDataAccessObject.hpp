@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <typeinfo>
+#include <unordered_map>
 #include <vector>
 
 #include <boost/describe.hpp>
@@ -163,6 +164,26 @@ public:
     }
 
     return db_.select<T>(selectAllStmt_);
+  }
+
+  std::optional<std::reference_wrapper<const T>> selectCacheById(uint32_t id)
+  {
+    // Check if already loaded in cache
+    auto resultIt = selectCache_.find(id);
+    if (resultIt != selectCache_.end())
+    {
+      return std::cref(resultIt->second);
+    }
+
+    auto selectResult = selectById(id);
+
+    if (!selectResult.has_value())
+    {
+      return std::nullopt;
+    }
+
+    auto result = selectCache_.emplace(id, std::move(selectResult.value()));
+    return std::cref(result.first->second);
   }
 
   /*!
@@ -614,6 +635,9 @@ private:
 
   //! Flush buffer - DB thread reads from here (no lock needed during flush)
   std::vector<T> flushBuffer_;
+
+  //! The cache for stored select data
+  std::unordered_map<uint32_t, T> selectCache_;
 
   //! Mutex protecting the write buffer
   std::mutex bufferMutex_;

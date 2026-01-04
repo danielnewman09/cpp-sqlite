@@ -536,15 +536,17 @@ TEST_F(DatabaseTest, ForeignKeyNullReference)
   bodyDAO.insert();
 
   // Load and verify
-  auto loaded = bodyDAO.selectById(1);
-  ASSERT_TRUE(loaded.has_value());
+  auto loadedOpt = bodyDAO.selectById(1);
+  ASSERT_TRUE(loadedOpt.has_value());
+
+  auto loaded = std::move(loadedOpt.value());
 
   // ForeignKey should be unset
-  EXPECT_EQ(loaded->centerOfMass.id, 0);
-  EXPECT_FALSE(loaded->centerOfMass.isSet());
+  EXPECT_EQ(loaded.centerOfMass.id, 0);
+  EXPECT_FALSE(loaded.centerOfMass.isSet());
 
   // Resolve should return empty optional
-  auto resolved = loaded->centerOfMass.resolve(db);
+  const auto& resolved = loaded.centerOfMass.resolve(db);
   EXPECT_FALSE(resolved.has_value()) << "Unset FK should not resolve";
 
   // Clean up

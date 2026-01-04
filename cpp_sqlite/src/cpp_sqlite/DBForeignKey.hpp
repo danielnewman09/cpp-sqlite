@@ -56,7 +56,7 @@ struct ForeignKey
   uint32_t id{0};
 
   // The data stored in the foreign key table - loaded on demand
-  std::optional<T> data_;
+  std::optional<std::reference_wrapper<const T>> data_;
 
   /*!
    * \brief Default

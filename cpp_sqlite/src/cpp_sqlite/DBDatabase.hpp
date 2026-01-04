@@ -398,10 +398,10 @@ std::optional<std::reference_wrapper<const T>> ForeignKey<T>::resolve(
 {
   if (isSet() && data_ == std::nullopt)
   {
-    data_ = db.getDAO<T>().selectById(id);
+    data_ = db.getDAO<T>().selectCacheById(id);
   }
 
-  return std::cref(data_.value());
+  return data_;
 }
 
 }  // namespace cpp_sqlite

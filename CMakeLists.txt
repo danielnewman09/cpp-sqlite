@@ -30,7 +30,7 @@ $<INSTALL_INTERFACE:include>
 )
 
 # Find the packages (dependencies) provided by Conan
-find_package(SQLite3 REQUIRED)
+find_package(SQLite3 REQUIRED CONFIG)
 find_package(Boost REQUIRED)
 find_package(spdlog REQUIRED)
 

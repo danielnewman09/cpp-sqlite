@@ -26,7 +26,7 @@ Database::Database(std::string url,
 
   if (result != SQLITE_OK)
   {
-    std::string error_msg = "Failed to open database: ";
+    std::string error_msg = "Failed to open database file " + url + ": ";
     if (raw_db)
     {
       error_msg += sqlite3_errmsg(raw_db);
