@@ -18,7 +18,7 @@ target_link_libraries(${PROJECT_NAME}
         PUBLIC 
                 spdlog::spdlog
                 boost::boost
-                SQLite::SQLite3
+                SQLite3::SQLite3
                 )
 
 # Add all relevant include directories
