@@ -15,7 +15,7 @@ target_link_libraries(cpp_sqlite_test
         cpp_sqlite
         GTest::GTest
         GTest::Main
-        SQLite::SQLite3
+        SQLite3::SQLite3
         boost::boost)
 
 target_compile_features(cpp_sqlite_test PRIVATE cxx_std_20)

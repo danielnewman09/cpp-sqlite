@@ -2,3 +2,5 @@ build/*
 CMakeUserPresets.json
 *.db
 *.log
+include/*
+lib/*

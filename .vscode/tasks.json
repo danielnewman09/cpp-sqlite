@@ -20,13 +20,23 @@
                 "all"
             ],
             "default": "missing"
+        },
+        {
+            "id": "buildTesting",
+            "description": "Build with tests enabled",
+            "type": "pickString",
+            "options": [
+                "True",
+                "False"
+            ],
+            "default": "False"
         }
     ],
     "tasks": [
         {
             "label": "Conan Build",
             "type": "shell",
-            "command": "conan build . --build=missing -s build_type=${input:buildType}",
+            "command": "conan build . --build=missing -s build_type=${input:buildType} -o \"&:build_testing=${input:buildTesting}\"",
             "group": {
                 "kind": "build",
                 "isDefault": true

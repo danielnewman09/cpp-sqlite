@@ -13,8 +13,8 @@ class CppSQLite(ConanFile):
     topics = ("sqlite", "database", "cpp20", "boost")
 
     settings = "os", "compiler", "build_type", "arch"
-    options = {"shared": [True, False], "fPIC": [True, False]}
-    default_options = {"shared": False, "fPIC": True}
+    options = {"shared": [True, False], "fPIC": [True, False], "build_testing": [True, False]}
+    default_options = {"shared": False, "fPIC": True, "build_testing": False}
 
     # Sources are located in the same place as this recipe, copy them to the recipe
     # Include source files for debugging support
@@ -61,6 +61,9 @@ class CppSQLite(ConanFile):
         tc.variables["CMAKE_ARCHIVE_OUTPUT_DIRECTORY"] = \
             f"${{CMAKE_BINARY_DIR}}/{build_type}"
 
+        if self.options.build_testing:
+            tc.variables["BUILD_TESTING"] = "ON"
+
         tc.generate()
 
     def build(self):
@@ -84,7 +87,7 @@ class CppSQLite(ConanFile):
 
     def requirements(self):
         # Regular dependency for the library/app
-        self.requires('sqlite3/3.47.0')
+        self.requires('sqlite3/3.47.0-local')
         self.requires("boost/1.86.0")
         self.requires('spdlog/1.14.1')
         # Test-only dependency
