@@ -81,7 +81,7 @@ struct ForeignKey
   /*!
    * \brief Check if this FK is set (non-zero ID)
    */
-  bool isSet() const
+  [[nodiscard]] bool isSet() const
   {
     return id != 0;
   }

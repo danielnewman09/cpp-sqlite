@@ -24,42 +24,68 @@ class CppSQLite(ConanFile):
         if self.settings.os == "Windows":
             del self.options.fPIC
 
+
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
 
-        self.options["boost"].without_wave = True
-        self.options["boost"].without_type_erasure = True
-        self.options["boost"].without_process = True
-        self.options["boost"].without_nowide = True
-        self.options["boost"].without_log = True
-        self.options["boost"].without_locale = True
-        self.options["boost"].without_fiber = True
-        self.options["boost"].without_coroutine = True
-        self.options["boost"].without_contract = True
-        self.options["boost"].without_cobalt = True
-        self.options["boost"].without_atomic = True
-        self.options["boost"].without_chrono = True
-        self.options["boost"].without_container = False
-        self.options["boost"].without_filesystem = True
-        self.options["boost"].without_system = False
-        self.options["boost"].without_thread = True
-        self.options["boost"].without_test = True
+        # Configure Boost options to minimize build
+        self.options["boost/*"].without_wave = True
+        self.options["boost/*"].without_type_erasure = True
+        self.options["boost/*"].without_process = True
+        self.options["boost/*"].without_nowide = True
+        self.options["boost/*"].without_log = True
+        self.options["boost/*"].without_locale = True
+        self.options["boost/*"].without_fiber = True
+        self.options["boost/*"].without_coroutine = True
+        self.options["boost/*"].without_contract = True
+        self.options["boost/*"].without_cobalt = True
+        self.options["boost/*"].without_atomic = True
+        self.options["boost/*"].without_chrono = True
+        self.options["boost/*"].without_container = False
+        self.options["boost/*"].without_filesystem = True
+        self.options["boost/*"].without_system = False
+        self.options["boost/*"].without_thread = True
+        self.options["boost/*"].without_test = True
+
+        # Disable problematic Boost components for Emscripten
+        if self.settings.os == "Emscripten":
+            self.options["boost/*"].without_stacktrace = True
+            self.options["boost/*"].without_context = True
+            self.options["boost/*"].without_iostreams = True
+
 
     def generate(self):
         deps = CMakeDeps(self)
         deps.generate()
         tc = CMakeToolchain(self)
-        tc.variables["CMAKE_CXX_STANDARD"] = "20"
-        tc.variables["CMAKE_CXX_STANDARD_REQUIRED"] = "ON"
-        
-        build_type = str(self.settings.build_type).lower()
-        tc.variables["CMAKE_RUNTIME_OUTPUT_DIRECTORY"] = \
-            f"${{CMAKE_BINARY_DIR}}/{build_type}"
-        tc.variables["CMAKE_LIBRARY_OUTPUT_DIRECTORY"] = \
-            f"${{CMAKE_BINARY_DIR}}/{build_type}"
-        tc.variables["CMAKE_ARCHIVE_OUTPUT_DIRECTORY"] = \
-            f"${{CMAKE_BINARY_DIR}}/{build_type}"
+        tc.cache_variables["CMAKE_CXX_STANDARD"] = "20"
+        tc.cache_variables["CMAKE_CXX_STANDARD_REQUIRED"] = "ON"
+
+        # Workaround for fmt/spdlog consteval issue
+        # See: https://github.com/emscripten-core/emscripten/issues/22795
+        # Disable compile-time format string checking
+        tc.cache_variables["CMAKE_CXX_FLAGS"] = "-DFMT_USE_CONSTEVAL=0 -DFMT_CONSTEVAL="
+
+        # Disable tests for Emscripten
+        if self.settings.os == "Emscripten":
+            tc.cache_variables["BUILD_TESTING"] = "OFF"
+
+        # Note: Don't set output directories - let CMakeLists.txt handle it
+        # The ${CMAKE_BINARY_DIR} variable isn't properly expanded in cache_variables
+
+        # Ensure CMake can find Conan-generated dependency configs
+        # This is needed when using external toolchain files (e.g., Emscripten)
+        # cmake_layout puts generators at {source}/build/{build_type}/generators
+        generators_dir = os.path.join(self.source_folder, "build",
+                                      str(self.settings.build_type), "generators")
+        # Use both cache variable AND direct variable setting
+        tc.cache_variables["CMAKE_PREFIX_PATH"] = generators_dir
+        # Also set package _DIR directly in case CMAKE_PREFIX_PATH isn't searched first
+        tc.cache_variables["SQLite3_DIR"] = generators_dir
+        tc.cache_variables["spdlog_DIR"] = generators_dir
+        tc.cache_variables["Boost_DIR"] = generators_dir
+        tc.cache_variables["fmt_DIR"] = generators_dir  # Required by spdlog
 
         if self.options.build_testing:
             tc.variables["BUILD_TESTING"] = "ON"

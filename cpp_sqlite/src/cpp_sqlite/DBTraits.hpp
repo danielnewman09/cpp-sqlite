@@ -44,17 +44,17 @@ concept ValidTransferObject =
   TransferObject<T> && DefaultConstructibleTransferObject<T>;
 
 template <typename T>
-struct is_vector : std::false_type
+struct IsVector : std::false_type
 {
 };
 
 template <typename T, typename Allocator>
-struct is_vector<std::vector<T, Allocator>> : std::true_type
+struct IsVector<std::vector<T, Allocator>> : std::true_type
 {
 };
 
 template <typename T>
-inline constexpr bool is_vector_v = is_vector<T>::value;
+inline constexpr bool kIsVectorV = IsVector<T>::value;
 
 template <ValidTransferObject T>
 struct RepeatedFieldTransferObject;
@@ -68,7 +68,7 @@ concept IsRepeatedFieldTransferObject = requires(C c) {
   { c.data };
 
   // 2. Check that the member `data` is a std::vector
-  requires is_vector_v<decltype(c.data)>;
+  requires kIsVectorV<decltype(c.data)>;
 
   // 3. Check the element type of the vector against the HasToString concept
   requires ValidTransferObject<typename decltype(c.data)::value_type>;
@@ -80,14 +80,14 @@ concept IsRepeatedFieldTransferObject = requires(C c) {
 template <typename T>
 struct GetRepeatedFieldParams
 {
-  static constexpr bool is_specialization = false;
+  static constexpr bool kIsSpecialization = false;
 };
 
 // Partial specialization for `Foo<Bar>`
 template <typename T>
 struct GetRepeatedFieldParams<RepeatedFieldTransferObject<T>>
 {
-  static constexpr bool is_specialization = true;
+  static constexpr bool kIsSpecialization = true;
   using SpecializationType = T;
 };
 
@@ -100,35 +100,35 @@ using RepeatedFieldOfType =
 
 // Primary template for detecting ForeignKey
 template <typename T>
-struct is_foreign_key : std::false_type
+struct IsForeignKeyT : std::false_type
 {
 };
 
 // Specialization for ForeignKey<T>
 template <ValidTransferObject T>
-struct is_foreign_key<ForeignKey<T>> : std::true_type
+struct IsForeignKeyT<ForeignKey<T>> : std::true_type
 {
 };
 
 // Concept for detecting ForeignKey types
 template <typename T>
-concept IsForeignKey = is_foreign_key<T>::value;
+concept IsForeignKey = IsForeignKeyT<T>::value;
 
 // Extract the referenced type from ForeignKey
 template <typename T>
-struct foreign_key_type
+struct ForeignKeyTypeT
 {
 };
 
 template <ValidTransferObject T>
-struct foreign_key_type<ForeignKey<T>>
+struct ForeignKeyTypeT<ForeignKey<T>>
 {
   using type = T;
 };
 
 // Helper alias to get the referenced type
 template <IsForeignKey T>
-using ForeignKeyType = typename foreign_key_type<T>::type;
+using ForeignKeyType = typename ForeignKeyTypeT<T>::type;
 
 // --- Basic Type Concepts ---
 

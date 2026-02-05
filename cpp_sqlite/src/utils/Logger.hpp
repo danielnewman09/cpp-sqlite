@@ -41,10 +41,10 @@ public:
   void setLevel(spdlog::level::level_enum level);
 
   // Check if logger is configured
-  bool isConfigured() const;
+  [[nodiscard]] bool isConfigured() const;
 
   // Get reference to the logger
-  std::shared_ptr<spdlog::logger> getLogger() const;
+  [[nodiscard]] std::shared_ptr<spdlog::logger> getLogger() const;
 
 private:
   Logger();

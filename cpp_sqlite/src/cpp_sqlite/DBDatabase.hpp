@@ -122,7 +122,7 @@ public:
 
             // Prepare and execute junction table query
             sqlite3_stmt* rawPtr = nullptr;
-            int result = sqlite3_prepare_v2(
+            const int result = sqlite3_prepare_v2(
               db_.get(), junctionQuery.c_str(), -1, &rawPtr, nullptr);
 
             if (result == SQLITE_OK)
@@ -159,7 +159,7 @@ public:
             if constexpr (isIntegral<decltype(nestedObj.id)>)
             {
               // Read the foreign key ID from the column
-              uint32_t nestedId = static_cast<uint32_t>(
+              auto nestedId = static_cast<uint32_t>(
                 sqlite3_column_int64(stmt.get(), columnIndex));
 
               // Recursively load the nested object by ID
@@ -202,11 +202,11 @@ public:
           else if constexpr (isBlob<memberType>)
           {
             const void* blobData = sqlite3_column_blob(stmt.get(), columnIndex);
-            int blobSize = sqlite3_column_bytes(stmt.get(), columnIndex);
+            const int blobSize = sqlite3_column_bytes(stmt.get(), columnIndex);
 
             if (blobData && blobSize > 0)
             {
-              const uint8_t* data = static_cast<const uint8_t*>(blobData);
+              const auto* data = static_cast<const uint8_t*>(blobData);
               obj.*D.pointer = std::vector<uint8_t>(data, data + blobSize);
             }
             columnIndex++;

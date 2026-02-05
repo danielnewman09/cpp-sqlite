@@ -5,15 +5,7 @@ namespace cpp_sqlite
 Logger::Logger() : logger_{nullptr}
 {
   // Configure with default settings on construction
-  try
-  {
-    configure();
-  }
-  catch (...)
-  {
-    // Allow construction to succeed even if default config fails
-    // User can call configure() later
-  }
+  configure();
 }
 
 void Logger::configure(const std::string& loggerName,
@@ -40,18 +32,18 @@ void Logger::configure(const std::string& loggerName,
     }
 
     // Create console sink
-    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    console_sink->set_level(level);
-    console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] %v");
+    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    consoleSink->set_level(level);
+    consoleSink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] %v");
 
     // Create file sink
-    auto file_sink =
+    auto fileSink =
       std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFile, true);
-    file_sink->set_level(level);
-    file_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] [thread %t] %v");
+    fileSink->set_level(level);
+    fileSink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] [thread %t] %v");
 
     // Create logger with both sinks
-    std::vector<spdlog::sink_ptr> sinks = {console_sink, file_sink};
+    std::vector<spdlog::sink_ptr> sinks = {consoleSink, fileSink};
     logger_ =
       std::make_shared<spdlog::logger>(loggerName, sinks.begin(), sinks.end());
 

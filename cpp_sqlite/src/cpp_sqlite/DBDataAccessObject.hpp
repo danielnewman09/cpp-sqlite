@@ -35,25 +35,21 @@ public:
    * Construct a data access object for this
    * database
    */
-  DataAccessObject(Database& database,
-                   std::shared_ptr<spdlog::logger> pLogger = nullptr)
+  explicit DataAccessObject(Database& database,
+                            std::shared_ptr<spdlog::logger> pLogger = nullptr)
     : tableName_{stripNamespace(boost::typeindex::type_id<T>().pretty_name())},
       insertStmt_{nullptr, sqlite3_finalize},
       selectAllStmt_{nullptr, sqlite3_finalize},
       selectByIdStmt_{nullptr, sqlite3_finalize},
-      writeBuffer_{},
-      flushBuffer_{},
-      idCounter_{0},
-      isInitialized_{true},
       db_{database},
-      pLogger_{pLogger}
+      pLogger_{std::move(pLogger)}
   {
-    isInitialized_ = executeCreateStmt();
+    isInitialized_ &= executeCreateStmt();
     isInitialized_ &= prepareInsertStatement();
     isInitialized_ &= prepareSelectStatements();
   }
 
-  std::string getTableName() const override
+  [[nodiscard]] std::string getTableName() const override
   {
     return tableName_;
   }
@@ -62,7 +58,7 @@ public:
    * \brief Get the initialization status of this DAO
    * \return The initialization status of the object.
    */
-  bool isInitialized() const override
+  [[nodiscard]] bool isInitialized() const override
   {
     return isInitialized_;
   }
@@ -114,7 +110,7 @@ public:
   {
     // Swap the write and flush buffers under a lock
     {
-      std::lock_guard<std::mutex> lock(bufferMutex_);
+      std::scoped_lock<std::mutex> lock(bufferMutex_);
       std::swap(writeBuffer_, flushBuffer_);
     }
 
@@ -135,7 +131,7 @@ public:
    */
   void clearBuffer() override
   {
-    std::lock_guard<std::mutex> lock(bufferMutex_);
+    std::scoped_lock<std::mutex> lock(bufferMutex_);
     writeBuffer_.clear();
     flushBuffer_.clear();
   }
@@ -146,7 +142,7 @@ public:
    */
   void addToBuffer(const T& obj)
   {
-    std::lock_guard<std::mutex> lock(bufferMutex_);
+    std::scoped_lock<std::mutex> lock(bufferMutex_);
     writeBuffer_.push_back(obj);
   }
 
@@ -237,13 +233,9 @@ private:
     {
       return "TEXT";
     }
-    else if constexpr (isBlob<FieldType>)
-    {
-      return "BLOB";
-    }
     else
     {
-      return "BLOB";  // Default for unknown types
+      return "BLOB";
     }
   }
 
@@ -279,21 +271,24 @@ private:
                                  "_" + dataName + "(" + tableName_ +
                                  "_id INTEGER, " + dataName + "_id INTEGER); ";
 
-          char* err_msg = 0;
+          char* errMsg = nullptr;
 
           LOG_SAFE(
             pLogger_, spdlog::level::trace, "Create Table: {}", mapTable);
 
-          if (sqlite3_exec(&db_.getRawDB(), mapTable.c_str(), 0, 0, &err_msg) !=
+          if (sqlite3_exec(
+                &db_.getRawDB(), mapTable.c_str(), nullptr, nullptr, &errMsg) !=
               SQLITE_OK)
           {
-            LOG_SAFE(pLogger_, spdlog::level::err, "SQL error: {}", err_msg);
+            LOG_SAFE(pLogger_, spdlog::level::err, "SQL error: {}", errMsg);
           }
         }
         else
         {
           if (!first)
+          {
             sql += ", ";
+          }
 
           // Get member name
           sql += D.name;
@@ -445,13 +440,10 @@ private:
         {
           // Skip - these are handled separately
         }
-        else if constexpr (IsForeignKey<memberType>)
+        else if constexpr (IsForeignKey<memberType> ||
+                           ValidTransferObject<memberType>)
         {
           // ForeignKey fields are stored as "_id" columns
-          columns.push_back(std::string(D.name) + "_id");
-        }
-        else if constexpr (ValidTransferObject<memberType>)
-        {
           columns.push_back(std::string(D.name) + "_id");
         }
         else if constexpr (isSupportedDBType<memberType>)
@@ -465,7 +457,9 @@ private:
     for (const auto& column : columns)
     {
       if (!first)
+      {
         sql << ", ";
+      }
       sql << column;
       first = false;
     }
@@ -499,13 +493,10 @@ private:
         {
           // Skip - these are handled separately
         }
-        else if constexpr (IsForeignKey<memberType>)
+        else if constexpr (IsForeignKey<memberType> ||
+                           ValidTransferObject<memberType>)
         {
           // ForeignKey fields are stored as "_id" columns
-          columns.push_back(std::string(D.name) + "_id");
-        }
-        else if constexpr (ValidTransferObject<memberType>)
-        {
           columns.push_back(std::string(D.name) + "_id");
         }
         else if constexpr (isSupportedDBType<memberType>)
@@ -519,7 +510,9 @@ private:
     for (const auto& column : columns)
     {
       if (!first)
+      {
         sql << ", ";
+      }
       sql << column;
       first = false;
     }
@@ -552,22 +545,16 @@ private:
           std::remove_reference_t<decltype(std::declval<T>().*D.pointer)>>;
 
         // Handle ForeignKey
-        if constexpr (IsForeignKey<memberType>)
+        if constexpr (IsForeignKey<memberType> ||
+                      ValidTransferObject<memberType>)
         {
           columns.push_back(std::string(D.name) + "_id");
-          placeholders.push_back("?");
-        }
-        // If the field is another transfer object, we use the foreign key
-        // column name
-        else if constexpr (ValidTransferObject<memberType>)
-        {
-          columns.push_back(std::string(D.name) + "_id");
-          placeholders.push_back("?");
+          placeholders.emplace_back("?");
         }
         else if constexpr (isSupportedDBType<memberType>)
         {
           columns.push_back(std::string(D.name));
-          placeholders.push_back("?");
+          placeholders.emplace_back("?");
         }
       });
 
@@ -576,7 +563,9 @@ private:
     for (const auto& column : columns)
     {
       if (!first)
+      {
         sql << ", ";
+      }
       sql << column;
       first = false;
     }
@@ -588,7 +577,9 @@ private:
     for (const auto& placeholder : placeholders)
     {
       if (!first)
+      {
         sql << ", ";
+      }
       sql << placeholder;
       first = false;
     }
@@ -606,7 +597,8 @@ private:
     std::string createQuery = generateCreateTableSQL();
 
     LOG_SAFE(pLogger_, spdlog::level::trace, "Executing: {}", createQuery);
-    int result = sqlite3_exec(&db_.getRawDB(), createQuery.c_str(), 0, 0, 0);
+    int result = sqlite3_exec(
+      &db_.getRawDB(), createQuery.c_str(), nullptr, nullptr, nullptr);
     if (result != SQLITE_OK)
     {
       LOG_SAFE(pLogger_,
@@ -631,10 +623,10 @@ private:
   PreparedSQLStmt selectByIdStmt_;
 
   //! Write buffer - writers add here (protected by mutex)
-  std::vector<T> writeBuffer_;
+  std::vector<T> writeBuffer_{};
 
   //! Flush buffer - DB thread reads from here (no lock needed during flush)
-  std::vector<T> flushBuffer_;
+  std::vector<T> flushBuffer_{};
 
   //! The cache for stored select data
   std::unordered_map<uint32_t, T> selectCache_;
@@ -643,10 +635,10 @@ private:
   std::mutex bufferMutex_;
 
   //! The current ID counter for inserting new data
-  uint32_t idCounter_;
+  uint32_t idCounter_{0};
 
   //! Tracks whether or not the DAO is initialized
-  bool isInitialized_;
+  bool isInitialized_{true};
 
   //! Reference to the Database object
   //! The Database class manages DAO lifetime through its internal storage.

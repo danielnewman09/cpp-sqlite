@@ -24,12 +24,12 @@ public:
 
   virtual ~DAOBase() = default;
 
-  virtual std::string getTableName() const = 0;
+  [[nodiscard]] virtual std::string getTableName() const = 0;
 
   /*!
    * \brief Check if the DAO is properly initialized
    */
-  virtual bool isInitialized() const = 0;
+  [[nodiscard]] virtual bool isInitialized() const = 0;
 
   /*!
    * \brief Perform insert operation with buffered data

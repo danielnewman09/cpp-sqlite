@@ -137,7 +137,9 @@
                 "panel": "shared",
                 "showReuseMessage": false
             },
-            "problemMatcher": ["$gcc"]
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "Conan: List Local Packages",
@@ -177,7 +179,52 @@
                 "panel": "shared",
                 "showReuseMessage": false
             },
-            "problemMatcher": ["$gcc"]
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Run clang-tidy",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "${workspaceFolder}/analysis/scripts/run_clang_tidy.sh"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Run clang-tidy (--fix)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "${workspaceFolder}/analysis/scripts/run_clang_tidy.sh",
+                "--fix"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }
