@@ -49,4 +49,18 @@ sqlite3& Database::getRawDB()
   return *db_;
 }
 
+bool Database::isInTransaction() const
+{
+  // sqlite3_get_autocommit returns 0 if a transaction is active
+  return sqlite3_get_autocommit(db_.get()) == 0;
+}
+
+void Database::flushAllDAOs()
+{
+  for (auto* dao : daoCreationOrder_)
+  {
+    dao->insert();
+  }
+}
+
 }  // namespace cpp_sqlite

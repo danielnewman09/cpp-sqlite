@@ -26,6 +26,9 @@
 namespace cpp_sqlite
 {
 
+// Forward declaration for Transaction
+class Transaction;
+
 
 template <ValidTransferObject T>
 class DataAccessObject;
@@ -60,6 +63,7 @@ public:
     {
       auto dao = std::make_unique<DataAccessObject<T>>(*this, pLogger_);
       auto& daoRef = *dao;
+      daoCreationOrder_.push_back(dao.get());
       daos_.emplace(typeIdx, std::move(dao));
       return daoRef;
     }
@@ -67,6 +71,20 @@ public:
     // Safe static_cast - we know the type from the map key
     return static_cast<DataAccessObject<T>&>(*it->second);
   }
+
+  /*!
+   * \brief Flush all buffered records from all registered DAOs
+   *
+   * Iterates over all DataAccessObject instances created via getDAO<T>()
+   * and calls insert() on each to flush their write buffers to the database.
+   *
+   * Thread-safe: Can be called while other threads add records via addToBuffer().
+   *
+   * \note This is a convenience method equivalent to calling dao.insert()
+   *       on each DAO individually. The flush order is deterministic
+   *       (creation order of DAOs).
+   */
+  void flushAllDAOs();
 
   /*!
    * \brief Perform a generic SELECT operation
@@ -379,6 +397,35 @@ public:
    */
   sqlite3& getRawDB();
 
+  /*!
+   * \brief Check if a transaction is currently active
+   * \return true if a transaction is active (autocommit is disabled)
+   */
+  [[nodiscard]] bool isInTransaction() const;
+
+  /*!
+   * \brief Execute a function within a transaction
+   *
+   * This is a convenience method that wraps a function in a transaction.
+   * If the function throws an exception, the transaction is rolled back.
+   * If the function completes successfully, the transaction is committed.
+   *
+   * \param func The function to execute within the transaction
+   * \throws TransactionError if transaction operations fail
+   * \throws Any exception thrown by the function (after rollback)
+   *
+   * Usage:
+   * \code
+   *   db.withTransaction([&]() {
+   *     auto& dao = db.getDAO<MyObject>();
+   *     dao.insert(obj1);
+   *     dao.insert(obj2);
+   *   });
+   * \endcode
+   */
+  template <typename Func>
+  void withTransaction(Func&& func);
+
 private:
   //!< The unique pointer storing the SQLite database
   //!< object
@@ -389,6 +436,9 @@ private:
 
   //! DAO storage using boost::unordered_map for better performance
   boost::unordered_map<std::type_index, std::unique_ptr<DAOBase>> daos_;
+
+  //! Tracks DAO creation order for deterministic iteration in flushAllDAOs()
+  std::vector<DAOBase*> daoCreationOrder_;
 };
 
 // Implementation of ForeignKey::resolve() (needs Database definition)
@@ -402,6 +452,22 @@ std::optional<std::reference_wrapper<const T>> ForeignKey<T>::resolve(
   }
 
   return data_;
+}
+
+}  // namespace cpp_sqlite
+
+// Include Transaction header after Database is fully defined
+#include "cpp_sqlite/src/cpp_sqlite/DBTransaction.hpp"
+
+namespace cpp_sqlite
+{
+
+template <typename Func>
+void Database::withTransaction(Func&& func)
+{
+  Transaction txn(*this);
+  func();
+  txn.commit();
 }
 
 }  // namespace cpp_sqlite

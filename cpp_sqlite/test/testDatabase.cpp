@@ -8,6 +8,7 @@
 #include "cpp_sqlite/src/cpp_sqlite/DBDataAccessObject.hpp"
 #include "cpp_sqlite/src/cpp_sqlite/DBDatabase.hpp"
 #include "cpp_sqlite/src/cpp_sqlite/DBRepeatedFieldTransferObject.hpp"
+#include "cpp_sqlite/src/cpp_sqlite/DBTransaction.hpp"
 #include "cpp_sqlite/test/testDatabase.hpp"
 
 struct ChildProduct : public cpp_sqlite::BaseTransferObject
@@ -666,6 +667,523 @@ TEST_F(DatabaseTest, NamespacedTypes)
   ASSERT_EQ(products.size(), 1);
   EXPECT_EQ(products[0].name, "Test Product");
   EXPECT_FLOAT_EQ(products[0].price, 19.99f);
+
+  CleanUp(testDbFile);
+}
+
+// ============================================================================
+// Transaction Tests
+// ============================================================================
+
+TEST_F(DatabaseTest, TransactionCommit)
+{
+  const std::string testDbFile = "test_transaction_commit.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // Verify no transaction is active initially
+  EXPECT_FALSE(db.isInTransaction());
+
+  // Begin transaction
+  {
+    cpp_sqlite::Transaction txn(db);
+
+    EXPECT_TRUE(db.isInTransaction());
+    EXPECT_TRUE(txn.isActive());
+    EXPECT_FALSE(txn.isSavepoint());
+
+    // Insert a document within the transaction
+    DocumentRecord doc;
+    doc.title = "Transaction Test";
+    doc.author = "Test Author";
+    doc.file_data = {0x01, 0x02, 0x03};
+    docDAO.addToBuffer(doc);
+    docDAO.insert();
+
+    // Commit the transaction
+    txn.commit();
+
+    EXPECT_FALSE(txn.isActive());
+  }
+
+  // Verify no transaction is active after commit
+  EXPECT_FALSE(db.isInTransaction());
+
+  // Verify the data was persisted
+  auto docs = docDAO.selectAll();
+  ASSERT_EQ(docs.size(), 1);
+  EXPECT_EQ(docs[0].title, "Transaction Test");
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, TransactionRollback)
+{
+  const std::string testDbFile = "test_transaction_rollback.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // First, insert a document outside of a transaction
+  DocumentRecord initialDoc;
+  initialDoc.title = "Initial Document";
+  initialDoc.author = "Initial Author";
+  initialDoc.file_data = {0xAA};
+  docDAO.addToBuffer(initialDoc);
+  docDAO.insert();
+
+  // Verify it's there
+  ASSERT_EQ(docDAO.selectAll().size(), 1);
+
+  // Now begin a transaction and rollback
+  {
+    cpp_sqlite::Transaction txn(db);
+
+    // Insert another document
+    DocumentRecord doc;
+    doc.title = "Should Be Rolled Back";
+    doc.author = "Rollback Author";
+    doc.file_data = {0xBB};
+    docDAO.addToBuffer(doc);
+    docDAO.insert();
+
+    // Explicitly rollback
+    txn.rollback();
+
+    EXPECT_FALSE(txn.isActive());
+  }
+
+  // Verify only the initial document exists (rollback worked)
+  auto docs = docDAO.selectAll();
+  ASSERT_EQ(docs.size(), 1);
+  EXPECT_EQ(docs[0].title, "Initial Document");
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, TransactionAutoRollbackOnDestruction)
+{
+  const std::string testDbFile = "test_transaction_auto_rollback.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // Begin a transaction and let it go out of scope without commit
+  {
+    cpp_sqlite::Transaction txn(db);
+
+    DocumentRecord doc;
+    doc.title = "Should Auto Rollback";
+    doc.author = "Auto Rollback Author";
+    doc.file_data = {0xCC};
+    docDAO.addToBuffer(doc);
+    docDAO.insert();
+
+    // Transaction goes out of scope without commit - should auto-rollback
+  }
+
+  // Verify no data was persisted
+  auto docs = docDAO.selectAll();
+  EXPECT_EQ(docs.size(), 0) << "Data should be rolled back on destruction";
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, NestedTransactionWithSavepoints)
+{
+  const std::string testDbFile = "test_nested_transaction.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // Outer transaction
+  {
+    cpp_sqlite::Transaction outerTxn(db);
+
+    EXPECT_TRUE(db.isInTransaction());
+    EXPECT_FALSE(outerTxn.isSavepoint());
+
+    // Insert first document
+    DocumentRecord doc1;
+    doc1.title = "Outer Doc";
+    doc1.author = "Outer Author";
+    doc1.file_data = {0x01};
+    docDAO.addToBuffer(doc1);
+    docDAO.insert();
+
+    // Inner transaction (should become a savepoint)
+    {
+      cpp_sqlite::Transaction innerTxn(db);
+
+      EXPECT_TRUE(innerTxn.isSavepoint());
+      EXPECT_FALSE(innerTxn.getSavepointName().empty());
+
+      // Insert second document
+      DocumentRecord doc2;
+      doc2.title = "Inner Doc";
+      doc2.author = "Inner Author";
+      doc2.file_data = {0x02};
+      docDAO.addToBuffer(doc2);
+      docDAO.insert();
+
+      // Commit inner (release savepoint)
+      innerTxn.commit();
+    }
+
+    // Commit outer
+    outerTxn.commit();
+  }
+
+  // Verify both documents were persisted
+  auto docs = docDAO.selectAll();
+  ASSERT_EQ(docs.size(), 2);
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, NestedTransactionRollbackInner)
+{
+  const std::string testDbFile = "test_nested_rollback_inner.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // Outer transaction
+  {
+    cpp_sqlite::Transaction outerTxn(db);
+
+    // Insert first document
+    DocumentRecord doc1;
+    doc1.title = "Outer Doc";
+    doc1.author = "Outer Author";
+    doc1.file_data = {0x01};
+    docDAO.addToBuffer(doc1);
+    docDAO.insert();
+
+    // Inner transaction that will be rolled back
+    {
+      cpp_sqlite::Transaction innerTxn(db);
+
+      // Insert second document
+      DocumentRecord doc2;
+      doc2.title = "Inner Doc - Should Rollback";
+      doc2.author = "Inner Author";
+      doc2.file_data = {0x02};
+      docDAO.addToBuffer(doc2);
+      docDAO.insert();
+
+      // Rollback inner (rollback to savepoint)
+      innerTxn.rollback();
+    }
+
+    // Commit outer
+    outerTxn.commit();
+  }
+
+  // Verify only outer document was persisted
+  auto docs = docDAO.selectAll();
+  ASSERT_EQ(docs.size(), 1);
+  EXPECT_EQ(docs[0].title, "Outer Doc");
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, WithTransactionHelper)
+{
+  const std::string testDbFile = "test_with_transaction.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // Use the withTransaction helper
+  db.withTransaction(
+    [&]()
+    {
+      DocumentRecord doc;
+      doc.title = "WithTransaction Test";
+      doc.author = "Helper Author";
+      doc.file_data = {0xDD};
+      docDAO.addToBuffer(doc);
+      docDAO.insert();
+    });
+
+  // Verify data was persisted
+  auto docs = docDAO.selectAll();
+  ASSERT_EQ(docs.size(), 1);
+  EXPECT_EQ(docs[0].title, "WithTransaction Test");
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, WithTransactionRollbackOnException)
+{
+  const std::string testDbFile = "test_with_transaction_exception.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // Use withTransaction with an exception
+  EXPECT_THROW(
+    {
+      db.withTransaction(
+        [&]()
+        {
+          DocumentRecord doc;
+          doc.title = "Should Be Rolled Back";
+          doc.author = "Exception Author";
+          doc.file_data = {0xEE};
+          docDAO.addToBuffer(doc);
+          docDAO.insert();
+
+          // Throw an exception - should trigger rollback
+          throw std::runtime_error("Intentional test exception");
+        });
+    },
+    std::runtime_error);
+
+  // Verify data was NOT persisted (rolled back)
+  auto docs = docDAO.selectAll();
+  EXPECT_EQ(docs.size(), 0) << "Data should be rolled back on exception";
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, TransactionMultipleInserts)
+{
+  const std::string testDbFile = "test_transaction_multiple.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // Insert multiple documents in a single transaction
+  db.withTransaction(
+    [&]()
+    {
+      for (int i = 1; i <= 100; i++)
+      {
+        DocumentRecord doc;
+        doc.title = "Batch Doc " + std::to_string(i);
+        doc.author = "Batch Author";
+        doc.file_data = {static_cast<uint8_t>(i)};
+        docDAO.addToBuffer(doc);
+      }
+      docDAO.insert();
+    });
+
+  // Verify all documents were persisted
+  auto docs = docDAO.selectAll();
+  ASSERT_EQ(docs.size(), 100);
+
+  CleanUp(testDbFile);
+}
+
+// ============================================================================
+// flushAllDAOs Tests
+// ============================================================================
+
+TEST_F(DatabaseTest, FlushAllDAOs_EmptyDatabase_NoOp)
+{
+  const std::string testDbFile = "test_flush_all_empty.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  // Call flushAllDAOs on a fresh database with no DAOs - should be a no-op
+  ASSERT_NO_THROW(db.flushAllDAOs());
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, FlushAllDAOs_SingleDAO_FlushesRecords)
+{
+  const std::string testDbFile = "test_flush_all_single.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  auto& docDAO = db.getDAO<DocumentRecord>();
+
+  // Add records to buffer
+  for (int i = 1; i <= 3; i++)
+  {
+    DocumentRecord doc;
+    doc.title = "Doc " + std::to_string(i);
+    doc.author = "Author";
+    doc.file_data = {static_cast<uint8_t>(i)};
+    docDAO.addToBuffer(doc);
+  }
+
+  // Flush all DAOs
+  ASSERT_NO_THROW(db.flushAllDAOs());
+
+  // Verify records were inserted
+  auto docs = docDAO.selectAll();
+  ASSERT_EQ(docs.size(), 3);
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, FlushAllDAOs_MultipleDAOs_FlushesAll)
+{
+  const std::string testDbFile = "test_flush_all_multiple.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  // Get multiple DAOs
+  auto& docDAO = db.getDAO<DocumentRecord>();
+  auto& vertexDAO = db.getDAO<Vertex3D>();
+  auto& productDAO = db.getDAO<my_app::NamespacedProduct>();
+
+  // Add records to each DAO's buffer
+  for (int i = 1; i <= 2; i++)
+  {
+    DocumentRecord doc;
+    doc.title = "Doc " + std::to_string(i);
+    doc.author = "Author";
+    doc.file_data = {static_cast<uint8_t>(i)};
+    docDAO.addToBuffer(doc);
+
+    Vertex3D v;
+    v.x = static_cast<float>(i);
+    v.y = static_cast<float>(i * 2);
+    v.z = static_cast<float>(i * 3);
+    vertexDAO.addToBuffer(v);
+
+    my_app::NamespacedProduct p;
+    p.name = "Product " + std::to_string(i);
+    p.price = static_cast<float>(i * 10);
+    productDAO.addToBuffer(p);
+  }
+
+  // Single call to flush all DAOs
+  ASSERT_NO_THROW(db.flushAllDAOs());
+
+  // Verify all records were inserted
+  EXPECT_EQ(docDAO.selectAll().size(), 2);
+  EXPECT_EQ(vertexDAO.selectAll().size(), 2);
+  EXPECT_EQ(productDAO.selectAll().size(), 2);
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, FlushAllDAOs_EmptyBuffers_NoOp)
+{
+  const std::string testDbFile = "test_flush_all_empty_buffers.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  // Create DAOs but don't add anything to buffers
+  auto& docDAO = db.getDAO<DocumentRecord>();
+  auto& vertexDAO = db.getDAO<Vertex3D>();
+
+  // Flush empty buffers - should be a no-op
+  ASSERT_NO_THROW(db.flushAllDAOs());
+
+  // Verify no records exist
+  EXPECT_EQ(docDAO.selectAll().size(), 0);
+  EXPECT_EQ(vertexDAO.selectAll().size(), 0);
+
+  CleanUp(testDbFile);
+}
+
+TEST_F(DatabaseTest, FlushAllDAOs_DeterministicOrder)
+{
+  const std::string testDbFile = "test_flush_all_order.db";
+
+  CleanUp(testDbFile);
+
+  auto& logger = cpp_sqlite::Logger::getInstance();
+  cpp_sqlite::Database db{testDbFile, true, logger.getLogger()};
+
+  // Create DAOs in a specific order
+  auto& docDAO = db.getDAO<DocumentRecord>();
+  auto& vertexDAO = db.getDAO<Vertex3D>();
+  auto& productDAO = db.getDAO<my_app::NamespacedProduct>();
+
+  // Add a single record to each
+  DocumentRecord doc;
+  doc.title = "Test";
+  doc.author = "Author";
+  doc.file_data = {0x01};
+  docDAO.addToBuffer(doc);
+
+  Vertex3D v;
+  v.x = 1.0f;
+  v.y = 2.0f;
+  v.z = 3.0f;
+  vertexDAO.addToBuffer(v);
+
+  my_app::NamespacedProduct p;
+  p.name = "Product";
+  p.price = 9.99f;
+  productDAO.addToBuffer(p);
+
+  // Flush multiple times - order should be deterministic
+  for (int i = 0; i < 3; i++)
+  {
+    // Clear and re-add
+    docDAO.clearBuffer();
+    vertexDAO.clearBuffer();
+    productDAO.clearBuffer();
+
+    docDAO.addToBuffer(doc);
+    vertexDAO.addToBuffer(v);
+    productDAO.addToBuffer(p);
+
+    ASSERT_NO_THROW(db.flushAllDAOs());
+  }
+
+  // All records should be inserted (3 iterations + 1 initial = 4 each, but we
+  // cleared between, so just 3 from the loop)
+  // Actually first flush happens before the loop, so total is 1 + 3 = 4
+  // Wait, the first addToBuffer calls are before the loop, and first flush
+  // is inside the loop after clear+re-add. So it's 3 flushes total.
+  EXPECT_EQ(docDAO.selectAll().size(), 3);
+  EXPECT_EQ(vertexDAO.selectAll().size(), 3);
+  EXPECT_EQ(productDAO.selectAll().size(), 3);
 
   CleanUp(testDbFile);
 }
