@@ -64,7 +64,7 @@ public:
       auto dao = std::make_unique<DataAccessObject<T>>(*this, pLogger_);
       auto& daoRef = *dao;
       daoCreationOrder_.push_back(dao.get());
-      daos_.emplace(typeIdx, std::move(dao));
+      daos_.try_emplace(typeIdx, std::move(dao));
       return daoRef;
     }
 
