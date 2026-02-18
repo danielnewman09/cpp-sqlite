@@ -1,6 +1,7 @@
 #ifndef DB_TRANSACTION_HPP
 #define DB_TRANSACTION_HPP
 
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 
