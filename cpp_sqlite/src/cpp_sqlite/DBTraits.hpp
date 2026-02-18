@@ -2,6 +2,7 @@
 #define DB_TRAITS_HPP
 
 #include <concepts>
+#include <memory>
 #include <type_traits>
 #include <vector>
 
