@@ -60,9 +60,7 @@
                 ".",
                 "--build=missing",
                 "-s",
-                "build_type=${input:buildType}",
-                "-o",
-                "\"&:enable_coverage=${input:enableCoverage}\""
+                "build_type=${input:buildType}"
             ],
             "group": {
                 "kind": "build",
@@ -101,7 +99,7 @@
             "label": "Create Conan Dependencies",
             "type": "shell",
             "command": [
-                "echo '=== Building Conan Dependencies ===';",
+                "echo '=== Building Conan Dependencies ===';"
             ],
             "presentation": {
                 "echo": true,
@@ -225,6 +223,220 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "codegraph: neo4j start",
+            "detail": "Create and/or start the project-local Neo4j Docker container.",
+            "type": "shell",
+            "command": "codegraph-db",
+            "args": [
+                "start"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: neo4j stop",
+            "detail": "Stop the Neo4j Docker container (data preserved on disk).",
+            "type": "shell",
+            "command": "codegraph-db",
+            "args": [
+                "stop"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: neo4j status",
+            "detail": "Show container status and connection info.",
+            "type": "shell",
+            "command": "codegraph-db",
+            "args": [
+                "status"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: neo4j browser",
+            "detail": "Open Neo4j Browser in the default browser.",
+            "type": "shell",
+            "command": "codegraph-db",
+            "args": [
+                "browser"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: unified reindex",
+            "detail": "Unified re-index: single Doxygen parse covering project + all Conan deps, merged with cppreference. Produces cross-resolved INHERITS_FROM, DEPENDS_ON, and namespace COMPOSES edges.",
+            "type": "shell",
+            "command": "doxygen-index",
+            "args": [
+                "codegraph",
+                "--project-dir",
+                ".",
+                "--output-dir",
+                "build/docs/unified",
+                "--cppreference",
+                "--force"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: index",
+            "detail": "Index only the project source (as-built) into Neo4j. No cppreference, no Conan deps.",
+            "type": "shell",
+            "command": "doxygen-index",
+            "args": [
+                "project",
+                ".",
+                "--format",
+                "neo4j",
+                "--source",
+                "as-built"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: start neo4j + index",
+            "detail": "Start Neo4j, then index only the project source.",
+            "dependsOn": [
+                "codegraph: neo4j start",
+                "codegraph: index"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: start neo4j + reindex",
+            "detail": "Start Neo4j, then clear and re-index only the project source.",
+            "dependsOn": [
+                "codegraph: neo4j start",
+                "codegraph: reindex"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: create html graph",
+            "detail": "Generate an interactive HTML graph visualization from the JSON index.",
+            "type": "shell",
+            "command": "doxygen-index",
+            "args": [
+                "html",
+                "."
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: view html graph",
+            "detail": "Open the codegraph HTML visualization in the default browser.",
+            "type": "shell",
+            "command": "open",
+            "args": [
+                "${workspaceFolder}/codegraph/codegraph.html"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: index + html",
+            "detail": "Index to JSON, then generate the interactive HTML graph.",
+            "dependsOn": [
+                "codegraph: index (json only)",
+                "codegraph: create html graph"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "codegraph: index + html + view",
+            "detail": "Index to JSON, generate HTML, then open it in the browser.",
+            "dependsOn": [
+                "codegraph: index + html",
+                "codegraph: view html graph"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
         }
     ]
 }
