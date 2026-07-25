@@ -1,5 +1,0 @@
-[2025-12-28 00:52:37.771] [test_cpp_sqlite] [debug] [thread 498260] Creating database with url: test_foreign_key_null.db
-[2025-12-28 00:52:43.702] [test_cpp_sqlite] [debug] [thread 498260] INSERT INTO RigidBody (id, name, mass, centerOfMass_id, initialPosition_id) VALUES (?, ?, ?, ?, ?);
-[2025-12-28 00:52:43.702] [test_cpp_sqlite] [debug] [thread 498260] SELECT id, name, mass, centerOfMass_id, initialPosition_id FROM RigidBody;
-[2025-12-28 00:52:43.702] [test_cpp_sqlite] [debug] [thread 498260] SELECT id, name, mass, centerOfMass_id, initialPosition_id FROM RigidBody WHERE id = ?;
-[2025-12-28 00:52:43.702] [test_cpp_sqlite] [warning] [thread 498260] Manual ID 1 is higher than current counter 0. Updating counter to prevent future conflicts.
